@@ -71,10 +71,11 @@ This is an npm workspaces monorepo with two main packages:
 - **Default sensor update interval**: 5000ms (configurable via SENSOR_UPDATE_INTERVAL)
 
 ### Bluetooth LE Integration
-- **BLE Scanner**: `backend/src/services/bleScanner.js` - Singleton service using `bluetoothctl` for device discovery
+- **BLE Scanner**: `backend/src/services/bleScanner.js` - Singleton service using `@abandonware/noble` library for device discovery
 - **Scan Duration**: 30 seconds (hardcoded in bleScanner.js)
-- **Device Discovery**: Parses bluetoothctl output for [NEW] and [CHG] device events
-- **WebSocket Broadcasting**: Discovered devices are broadcast to all connected clients in real-time
+- **Device Discovery**: Uses Noble's peripheral discovery events to detect BLE devices with name, address, and RSSI
+- **Event-Driven Architecture**: BLEScanner extends EventEmitter, emitting `bleStateChange`, `bleDeviceDiscovered`, and `bleScanStatus` events
+- **WebSocket Broadcasting**: Discovered devices and scan status are broadcast to all connected clients in real-time
 - **Frontend WebSocket Client**: `frontend/src/services/websocket.js` - Singleton client with event emitter pattern
 
 ## Configuration
@@ -99,7 +100,20 @@ This application is designed to run on a touchscreen-enabled device (likely Rasp
 - 13.3" display at 1920x1080 resolution
 - Landscape orientation
 - Touch input enabled
-- Bluetooth LE adapter required for device scanning (uses `bluetoothctl` command)
+- Bluetooth LE adapter required for device scanning (uses `@abandonware/noble` library)
+
+## Important Implementation Notes
+
+### BLE Architecture Changes
+The project recently transitioned from using `bluetoothctl` command-line interface to the `@abandonware/noble` Node.js library for better integration and performance. Key architectural improvements:
+- **Decoupled Design**: BLEScanner service is completely decoupled from WebSocket broadcasting via EventEmitter pattern
+- **State Management**: Noble handles Bluetooth adapter state changes (`poweredOn`, `poweredOff`, etc.)
+- **Real-time Discovery**: Device discovery happens through Noble's event system rather than parsing command output
+- **Error Handling**: Improved error handling for Bluetooth state and scanning failures
+
+### Development Data
+- `frontend/src/data/appointments.json` - Static appointment data for development
+- `frontend/src/data/vitals.json` - Static vital signs data for development
 
 ## Source Code Location
 
