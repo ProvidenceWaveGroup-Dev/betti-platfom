@@ -15,9 +15,10 @@ npm run install:all          # Install all dependencies (root + workspaces)
 
 ### Development
 ```bash
-npm run dev                   # Run both frontend and backend concurrently
+npm run dev                   # Run frontend, backend, and video chat server concurrently
 npm run dev:frontend          # Frontend only (http://localhost:5173)
 npm run dev:backend           # Backend only (http://localhost:3001)
+npm run dev:video             # Video chat server only (port 8080)
 ```
 
 ### Building
@@ -36,9 +37,10 @@ npm run start:backend         # Start backend in production mode
 ## Architecture
 
 ### Workspace Structure
-This is an npm workspaces monorepo with two main packages:
+This is an npm workspaces monorepo with three main components:
 - `frontend/` - React application built with Vite
 - `backend/` - Express API server with WebSocket support
+- `backend/videochat-server/` - WebRTC signaling server for video chat functionality
 
 ### Frontend (`@betti/frontend`)
 - **Framework**: React 18 with React Router for navigation
@@ -47,7 +49,7 @@ This is an npm workspaces monorepo with two main packages:
 - **Display Target**: 1920x1080 resolution (13.3" touchscreen)
 - **CSS Variables**: Screen dimensions pre-configured ($screen-width: 1920px, $screen-height: 1080px)
 - **Entry Point**: `frontend/src/main.jsx`
-- **Main App**: `frontend/src/App.jsx` - Simple component layout with Header, Appointments, Vitals, and BLEDevices
+- **Main App**: `frontend/src/App.jsx` - Dynamic component layout with panel state management supporting Header, Appointments, Vitals, BLEDevices, and VideoChat components. Features collapsible panels and video-dominant layout mode
 
 ### Backend (`@betti/backend`)
 - **Framework**: Express 4
@@ -57,6 +59,14 @@ This is an npm workspaces monorepo with two main packages:
 - **Default Port**: 3001 (configured via PORT in .env)
 - **CORS**: Enabled, defaults to http://localhost:5173
 - **Entry Point**: `backend/src/index.js`
+
+### Video Chat Server (`backend/videochat-server/`)
+- **Runtime**: Node.js with CommonJS (server.cjs)
+- **Framework**: Native WebSocket Server with HTTPS support
+- **Default Port**: 8080 (configured via VIDEO_PORT environment variable)
+- **SSL Support**: Supports HTTPS with cert.pem and key.pem certificates for WebRTC compatibility
+- **Functionality**: WebRTC signaling server for peer-to-peer video communication
+- **Room Management**: Supports room-based video chat with up to 2 participants per room
 
 ### Communication
 - **REST API**: Backend exposes Express endpoints for frontend consumption
@@ -87,6 +97,7 @@ Copy `backend/.env.example` to `backend/.env` before first run:
 - `NODE_ENV` - Environment (development/production)
 - `CORS_ORIGIN` - Frontend URL for CORS (default: http://localhost:5173)
 - `SENSOR_UPDATE_INTERVAL` - Sensor polling interval in ms (default: 5000)
+- `VIDEO_PORT` - Video chat server port (default: 8080)
 
 ### Frontend Configuration
 Vite configuration in `frontend/vite.config.js`:
@@ -101,6 +112,7 @@ This application is designed to run on a touchscreen-enabled device (likely Rasp
 - Landscape orientation
 - Touch input enabled
 - Bluetooth LE adapter required for device scanning (uses `@abandonware/noble` library)
+- SSL certificates (cert.pem/key.pem) required for HTTPS in video chat server for WebRTC camera access on remote devices
 
 ## Important Implementation Notes
 
@@ -115,12 +127,20 @@ The project recently transitioned from using `bluetoothctl` command-line interfa
 - `frontend/src/data/appointments.json` - Static appointment data for development
 - `frontend/src/data/vitals.json` - Static vital signs data for development
 
+### Video Chat Integration
+The app features a sophisticated panel state management system in `frontend/src/App.jsx`:
+- **Panel States**: `expanded`, `collapsed`, `hidden` for health, appointments, sensors, and video panels
+- **Video-Dominant Layout**: When video chat is active, the layout switches to a video-dominant mode with sidebar components
+- **Dynamic Layouts**: Automatic panel state management when switching between normal and video modes
+
 ## Source Code Location
 
 When implementing features, source code should be placed in:
 - `backend/src/` - Backend JavaScript files (ES modules)
 - `frontend/src/` - Frontend React components and application code
+- `backend/videochat-server/` - Video chat server files (CommonJS)
 
 The entry points are:
 - Backend: `backend/src/index.js`
 - Frontend: `frontend/src/main.jsx`
+- Video Chat Server: `backend/videochat-server/server.cjs`

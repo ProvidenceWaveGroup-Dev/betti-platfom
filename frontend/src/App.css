@@ -77,3 +77,95 @@
     transform: scale(1.2);
   }
 }
+
+/* Video-dominant layout styles */
+.main-content.video-active {
+  display: flex;
+  flex-direction: row;
+  gap: 30px;
+  padding: 20px 30px 30px;
+}
+
+.video-section {
+  flex: 0 0 65%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sidebar-section {
+  flex: 0 0 35%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-item {
+  flex-shrink: 0;
+}
+
+/* Ensure VideoChat fills its container in video-active mode */
+.video-section .video-chat {
+  height: 100%;
+  margin: 0;
+}
+
+/* Sidebar scrollbar styling */
+.sidebar-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-section::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.sidebar-section::-webkit-scrollbar-thumb {
+  background: rgba(74, 158, 255, 0.3);
+  border-radius: 3px;
+}
+
+.sidebar-section::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 158, 255, 0.5);
+}
+
+/* Responsive adjustments for video layout */
+@media (max-width: 1400px) {
+  .main-content.video-active {
+    gap: 20px;
+    padding: 15px 20px 25px;
+  }
+
+  .video-section {
+    flex: 0 0 60%;
+  }
+
+  .sidebar-section {
+    flex: 0 0 40%;
+  }
+}
+
+@media (max-width: 1200px) {
+  .main-content.video-active {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .video-section {
+    flex: 0 0 70%;
+  }
+
+  .sidebar-section {
+    flex: 0 0 30%;
+    flex-direction: row;
+    gap: 15px;
+  }
+
+  .sidebar-item {
+    flex: 1;
+  }
+}
