@@ -99,11 +99,16 @@ Copy `backend/.env.example` to `backend/.env` before first run:
 - `SENSOR_UPDATE_INTERVAL` - Sensor polling interval in ms (default: 5000)
 - `VIDEO_PORT` - Video chat server port (default: 8080)
 
+### Frontend Environment Variables
+Configure `frontend/.env`:
+- `VITE_VIDEO_SERVER_URL` - Video chat server URL (e.g., "10.0.0.232:8080" for local network access)
+
 ### Frontend Configuration
 Vite configuration in `frontend/vite.config.js`:
 - Dev server uses strictPort mode (fails if 5173 is occupied)
 - Production builds exclude sourcemaps for smaller bundle size
 - SCSS preprocessor configured with screen dimension variables
+- SSL support enabled via @vitejs/plugin-basic-ssl for HTTPS development
 
 ## Hardware Context
 
@@ -113,6 +118,7 @@ This application is designed to run on a touchscreen-enabled device (likely Rasp
 - Touch input enabled
 - Bluetooth LE adapter required for device scanning (uses `@abandonware/noble` library)
 - SSL certificates (cert.pem/key.pem) required for HTTPS in video chat server for WebRTC camera access on remote devices
+- Video chat server automatically falls back to HTTP if SSL certificates are not found (development only)
 
 ## Important Implementation Notes
 
@@ -133,7 +139,12 @@ The app features a sophisticated panel state management system in `frontend/src/
 - **Video-Dominant Layout**: When video chat is active, the layout switches to a video-dominant mode with sidebar components
 - **Dynamic Layouts**: Automatic panel state management when switching between normal and video modes
 
-## Source Code Location
+## Development Notes
+
+### Testing and Linting
+This project currently does not have configured linting (ESLint) or testing frameworks. The backend `package.json` includes a placeholder test script that exits with an error.
+
+### Source Code Location
 
 When implementing features, source code should be placed in:
 - `backend/src/` - Backend JavaScript files (ES modules)
