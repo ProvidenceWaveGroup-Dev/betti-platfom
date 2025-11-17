@@ -16,7 +16,21 @@
       "Bash(timeout 15 sudo hcitool:*)",
       "Bash(sudo hcitool cmd 0x08 0x0003)",
       "Bash(git checkout:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(git commit:*)",
+      "Bash(npm i:*)",
+      "Bash(Select-String -Path \"src/**/*.jsx\",\"src/**/*.js\",\"src/**/*.css\" -Pattern \"/logo.png\")",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(dir:*)",
+      "Bash(git add:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm run:*)",
+      "Bash(openssl req:*)",
+      "Bash(git branch:*)",
+      "Bash(git reset:*)",
+      "Bash(tasklist)",
+      "Bash(npx vite:*)"
     ],
     "deny": [],
     "ask": []

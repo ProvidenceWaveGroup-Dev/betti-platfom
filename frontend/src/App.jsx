@@ -3,6 +3,7 @@ import Header from './components/Header'
 import Appointments from './components/Appointments'
 import Vitals from './components/Vitals'
 import Nutrition from './components/Nutrition'
+import Hydration from './components/Hydration'
 import BLEDevices from './components/BLEDevices'
 import VideoChat from './components/VideoChat'
 import './App.css'
@@ -12,13 +13,14 @@ function App() {
   const [panelState, setPanelState] = useState({
     health: 'collapsed',
     nutrition: 'collapsed',
+    hydration: 'collapsed',
     appointments: 'collapsed',
     sensors: 'collapsed',
     video: 'hidden'
   })
 
   // Static panel order
-  const panelOrder = ['health', 'appointments', 'nutrition', 'sensors']
+  const panelOrder = ['health', 'appointments', 'nutrition', 'hydration', 'sensors']
 
   // Helper function for main panels: only toggle between collapsed and visible
   const getNextPanelState = (currentState) => {
@@ -45,6 +47,11 @@ function App() {
       setPanelState(prev => ({
         ...prev,
         nutrition: getNextPanelState(prev.nutrition)
+      }))
+    } else if (view === 'hydration') {
+      setPanelState(prev => ({
+        ...prev,
+        hydration: getNextPanelState(prev.hydration)
       }))
     } else if (view === 'appointments') {
       setPanelState(prev => ({
@@ -79,6 +86,7 @@ function App() {
 
     if (panelState.health === 'visible' || panelState.health === 'collapsed') activePanels.push('health')
     if (panelState.nutrition === 'visible' || panelState.nutrition === 'collapsed') activePanels.push('nutrition')
+    if (panelState.hydration === 'visible' || panelState.hydration === 'collapsed') activePanels.push('hydration')
     if (panelState.appointments === 'visible' || panelState.appointments === 'collapsed') activePanels.push('appointments')
     if (panelState.sensors === 'visible' || panelState.sensors === 'collapsed') activePanels.push('sensors')
 
@@ -102,6 +110,8 @@ function App() {
         return <Appointments isCollapsed={isCollapsed} />
       case 'nutrition':
         return <Nutrition isCollapsed={isCollapsed} />
+      case 'hydration':
+        return <Hydration isCollapsed={isCollapsed} />
       case 'sensors':
         return <BLEDevices isCollapsed={isCollapsed} />
       default:
@@ -122,6 +132,9 @@ function App() {
             break
           case 'nutrition':
             component = <Nutrition isCollapsed={true} />
+            break
+          case 'hydration':
+            component = <Hydration isCollapsed={true} />
             break
           case 'appointments':
             component = <Appointments isCollapsed={true} />

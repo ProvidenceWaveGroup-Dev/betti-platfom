@@ -1,0 +1,402 @@
+/* Hydration Panel Styles */
+.hydration-card {
+  background: rgba(20, 20, 30, 0.6);
+  border-radius: 16px;
+  padding: 30px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 191, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.card-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 300;
+}
+
+.status-normal {
+  color: var(--accent-green, #00ff88);
+  background: rgba(0, 255, 136, 0.1);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-green, #00ff88);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.hydration-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+.hydration-summary {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.hydration-visual {
+  flex-shrink: 0;
+}
+
+.water-glass {
+  position: relative;
+  width: 80px;
+  height: 120px;
+  background: rgba(0, 191, 255, 0.1);
+  border: 3px solid rgba(0, 191, 255, 0.3);
+  border-radius: 0 0 20px 20px;
+  overflow: hidden;
+}
+
+.water-level {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(180deg, #00bfff 0%, #0080ff 100%);
+  transition: height 0.5s ease;
+  border-radius: 0 0 17px 17px;
+}
+
+.glass-outline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(0, 191, 255, 0.5);
+  border-radius: 0 0 20px 20px;
+  pointer-events: none;
+}
+
+.hydration-stats {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hydration-numbers {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 36px;
+  font-weight: 300;
+  color: #fff;
+}
+
+.consumed {
+  color: #00bfff;
+}
+
+.separator {
+  color: #666;
+  font-weight: 400;
+}
+
+.target {
+  color: #aaa;
+  font-size: 28px;
+}
+
+.unit {
+  color: #888;
+  font-size: 18px;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00bfff 0%, #0080ff 100%);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.percentage {
+  color: #00bfff;
+  font-weight: 500;
+}
+
+.remaining {
+  color: #aaa;
+}
+
+.hydration-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(0, 191, 255, 0.05);
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.detail-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.detail-label {
+  color: #ccc;
+  min-width: 100px;
+}
+
+.detail-value {
+  color: #fff;
+  font-weight: 500;
+  flex: 1;
+}
+
+.hydration-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.action-button.primary {
+  background: #00bfff;
+  color: #fff;
+  flex: 1;
+}
+
+.action-button.primary:hover {
+  background: #0099cc;
+  transform: translateY(-1px);
+}
+
+.action-button.secondary {
+  background: rgba(0, 191, 255, 0.1);
+  color: #00bfff;
+  border: 1px solid rgba(0, 191, 255, 0.3);
+}
+
+.action-button.secondary:hover {
+  background: rgba(0, 191, 255, 0.2);
+}
+
+.button-icon {
+  font-size: 16px;
+}
+
+/* Mini/Collapsed State */
+.hydration-mini {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(0, 191, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px 20px;
+  transition: all 0.3s ease;
+  max-height: 80px;
+}
+
+.hydration-mini:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(0, 191, 255, 0.4);
+}
+
+.mini-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mini-icon {
+  font-size: 18px;
+}
+
+.mini-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+.mini-status {
+  font-size: 12px;
+  color: #00bfff;
+  background: rgba(0, 191, 255, 0.15);
+  padding: 2px 8px;
+  border-radius: 8px;
+  margin-left: auto;
+}
+
+.mini-hydration-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mini-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.mini-progress-fill {
+  height: 100%;
+  background: #00bfff;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.mini-hydration-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.mini-percentage {
+  font-size: 11px;
+  font-weight: 600;
+  color: #00bfff;
+  line-height: 1;
+}
+
+.mini-last-intake {
+  font-size: 9px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .hydration-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .hydration-actions {
+    flex-direction: column;
+  }
+
+  .action-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 1000px) {
+  .hydration-summary {
+    gap: 16px;
+  }
+
+  .water-glass {
+    width: 60px;
+    height: 90px;
+  }
+
+  .hydration-numbers {
+    font-size: 28px;
+  }
+
+  .target {
+    font-size: 24px;
+  }
+}
+
+/* Container query for very constrained width */
+.hydration-card {
+  container-type: inline-size;
+}
+
+@container (max-width: 400px) {
+  .hydration-summary {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .water-glass {
+    width: 50px;
+    height: 75px;
+  }
+
+  .hydration-numbers {
+    font-size: 24px;
+  }
+
+  .target {
+    font-size: 20px;
+  }
+
+  .hydration-details {
+    padding: 12px;
+  }
+
+  .detail-item {
+    font-size: 13px;
+  }
+}

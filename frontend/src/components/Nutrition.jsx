@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import nutritionApi from '../services/nutritionApi'
 import MealLogModal from './MealLogModal'
+import NutritionDetailsModal from './NutritionDetailsModal'
 import './Nutrition.css'
 
 function Nutrition({ isCollapsed = false }) {
@@ -8,6 +9,7 @@ function Nutrition({ isCollapsed = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showMealModal, setShowMealModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
 
   useEffect(() => {
     loadNutritionData()
@@ -205,7 +207,10 @@ function Nutrition({ isCollapsed = false }) {
           <span className="button-icon">➕</span>
           Log Meal
         </button>
-        <button className="action-button secondary">
+        <button
+          className="action-button secondary"
+          onClick={() => setShowDetailsModal(true)}
+        >
           <span className="button-icon">📊</span>
           View Details
         </button>
@@ -215,6 +220,11 @@ function Nutrition({ isCollapsed = false }) {
         isOpen={showMealModal}
         onClose={() => setShowMealModal(false)}
         onMealLogged={handleMealLogged}
+      />
+
+      <NutritionDetailsModal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
       />
     </div>
   )
