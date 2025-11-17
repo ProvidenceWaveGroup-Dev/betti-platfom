@@ -266,9 +266,9 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(74, 158, 255, 0.2);
   border-radius: 12px;
-  padding: 16px 24px;
+  padding: 12px 20px;
   transition: all 0.3s ease;
-  margin-top: 20px;
+  max-height: 80px;
 }
 
 .ble-mini:hover {
@@ -279,43 +279,101 @@
 .ble-mini .mini-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .ble-mini .mini-icon {
-  font-size: 24px;
+  font-size: 18px;
 }
 
 .ble-mini .mini-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-light);
 }
 
-.mini-connection {
-  font-size: 13px;
-  padding: 4px 12px;
-  border-radius: 12px;
+.mini-status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  margin-left: auto;
 }
 
-.mini-connection.connected {
+.mini-status.connected {
   color: var(--status-normal);
   background: rgba(76, 175, 80, 0.15);
 }
 
-.mini-connection.disconnected {
+.mini-status.disconnected {
   color: var(--status-warning);
   background: rgba(255, 152, 0, 0.15);
 }
 
-.ble-mini .mini-count {
-  margin-left: auto;
-  font-size: 14px;
+/* Enhanced mini BLE content */
+.mini-ble-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mini-device-count {
+  font-size: 12px;
   color: var(--text-muted);
-  background: rgba(74, 158, 255, 0.15);
-  padding: 4px 12px;
-  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.mini-device-list {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mini-device {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  font-size: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mini-device-signal {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.mini-device-name {
+  flex: 1;
+  color: var(--text-light);
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-device-rssi {
+  color: var(--text-muted);
+  font-size: 8px;
+  flex-shrink: 0;
+}
+
+.mini-scanning {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.mini-spinner {
+  animation: pulse 1.5s ease-in-out infinite;
 }

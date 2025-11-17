@@ -2,6 +2,9 @@ import express from 'express'
 import cors from 'cors'
 import { WebSocketServer } from 'ws'
 import { createServer } from 'http'
+import { createServer as createHttpsServer } from 'https'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import dotenv from 'dotenv'
 import bleRoutes from './routes/ble.js'
 import bleScanner from './services/bleScanner.js' // Import bleScanner
@@ -19,8 +22,21 @@ app.use(cors({
 }))
 app.use(express.json())
 
-// Create HTTP server
-const server = createServer(app)
+// Try to create HTTPS server if certificates exist, otherwise use HTTP
+let server
+try {
+  // Look for certificates (Vite's basicSsl creates them in node_modules/.vite/basic-ssl)
+  const certDir = join(process.cwd(), '../frontend/node_modules/.vite/basic-ssl')
+  const cert = readFileSync(join(certDir, '_cert.pem'))
+  const key = readFileSync(join(certDir, '_cert.pem')) // basicSsl uses same file for cert and key
+
+  server = createHttpsServer({ cert, key }, app)
+  console.log('🔒 HTTPS server will be created')
+} catch (error) {
+  // Fall back to HTTP if no certificates found
+  server = createServer(app)
+  console.log('📡 HTTP server will be created (no SSL certificates found)')
+}
 
 // Create WebSocket server
 const wss = new WebSocketServer({ server })

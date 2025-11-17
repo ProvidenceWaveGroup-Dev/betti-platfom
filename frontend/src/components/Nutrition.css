@@ -58,12 +58,13 @@
 /* Nutrition Grid */
 .nutrition-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: clamp(8px, 1.5vw, 12px);
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  padding: 0 4px;
 }
 
 /* Nutrition grid scrollbar */
@@ -88,13 +89,15 @@
 .nutrition-item {
   background: rgba(10, 10, 20, 0.5);
   border-radius: 12px;
-  padding: 20px;
+  padding: clamp(12px, 2.5vw, 16px);
   display: flex;
-  gap: 16px;
+  gap: clamp(8px, 1.5vw, 12px);
   border-left: 4px solid #ff8800;
   transition: all 0.3s ease;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  min-height: clamp(80px, 20vw, 120px);
+  min-width: 0;
 }
 
 .nutrition-item:hover {
@@ -107,26 +110,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: clamp(32px, 8vw, 48px);
+  height: clamp(32px, 8vw, 48px);
   background: rgba(255, 136, 0, 0.1);
-  border-radius: 12px;
+  border-radius: clamp(8px, 2vw, 12px);
   flex-shrink: 0;
 }
 
 .nutrition-icon {
-  font-size: 24px;
+  font-size: clamp(16px, 4vw, 24px);
+  line-height: 1;
 }
 
 .nutrition-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: clamp(6px, 1.5vw, 8px);
+  min-width: 0;
+  justify-content: space-between;
+  min-height: clamp(60px, 15vw, 90px);
 }
 
 .nutrition-label {
-  font-size: 14px;
+  font-size: clamp(12px, 2.5vw, 14px);
   color: #ccc;
   font-weight: 500;
   text-transform: capitalize;
@@ -136,7 +143,7 @@
   display: flex;
   align-items: baseline;
   gap: 4px;
-  font-size: 20px;
+  font-size: clamp(16px, 3.5vw, 18px);
   font-weight: 600;
   color: #fff;
 }
@@ -152,12 +159,12 @@
 
 .nutrition-target {
   color: #aaa;
-  font-size: 16px;
+  font-size: clamp(14px, 3vw, 16px);
 }
 
 .nutrition-unit {
   color: #888;
-  font-size: 12px;
+  font-size: clamp(11px, 2.5vw, 12px);
   font-weight: 400;
   margin-left: 4px;
 }
@@ -166,7 +173,9 @@
 .nutrition-progress {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: clamp(8px, 2vw, 12px);
+  margin-top: auto;
+  padding-top: clamp(4px, 1vw, 6px);
 }
 
 .progress-bar {
@@ -196,11 +205,13 @@
 }
 
 .progress-percentage {
-  font-size: 12px;
+  font-size: clamp(10px, 2.5vw, 12px);
   color: #aaa;
   font-weight: 500;
-  min-width: 32px;
+  min-width: clamp(28px, 7vw, 38px);
   text-align: right;
+  line-height: 1.2;
+  flex-shrink: 0;
 }
 
 .nutrition-remaining {
@@ -301,92 +312,101 @@
 
 /* Mini/Collapsed State */
 .nutrition-mini {
-  background: rgba(20, 20, 30, 0.6);
-  border-radius: 12px;
-  padding: 16px;
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 136, 0, 0.2);
-  margin: 0;
-  flex-shrink: 0;
+  border-radius: 12px;
+  padding: 12px 20px;
+  transition: all 0.3s ease;
+  max-height: 80px;
+}
+
+.nutrition-mini:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 136, 0, 0.4);
 }
 
 .mini-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .mini-icon {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .mini-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #fff;
-  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-light);
 }
 
 .mini-status {
   font-size: 12px;
-  color: var(--accent-green, #00ff88);
-  background: rgba(0, 255, 136, 0.1);
-  padding: 4px 8px;
-  border-radius: 12px;
+  color: #ff8800;
+  background: rgba(255, 136, 0, 0.15);
+  padding: 2px 8px;
+  border-radius: 8px;
+  margin-left: auto;
 }
 
 .mini-nutrition-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: 12px;
+  justify-content: space-between;
 }
 
 .mini-nutrition-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px;
-  background: rgba(255, 136, 0, 0.05);
-  border-radius: 8px;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
 }
 
 .mini-nutrition-icon {
-  font-size: 16px;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
 .mini-nutrition-info {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 2px;
+  gap: 1px;
+  min-width: 0;
 }
 
 .mini-nutrition-value {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 600;
   color: #ff8800;
+  line-height: 1;
 }
 
 .mini-nutrition-label {
-  font-size: 10px;
-  color: #aaa;
+  font-size: 8px;
+  color: var(--text-muted);
   text-transform: capitalize;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mini-progress-bar {
   width: 100%;
-  height: 3px;
+  height: 2px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
+  border-radius: 1px;
   overflow: hidden;
+  margin-top: 2px;
 }
 
 .mini-progress-fill {
   height: 100%;
   background: #ff8800;
-  border-radius: 2px;
+  border-radius: 1px;
   transition: width 0.3s ease;
 }
 
@@ -408,5 +428,86 @@
 
   .action-button {
     width: 100%;
+  }
+}
+
+/* Adjustments for smaller screens when expanded */
+@media (max-width: 1400px) {
+  .nutrition-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+}
+
+/* Optimization for 4-panel layout (very constrained width) */
+.nutrition-card {
+  container-type: inline-size;
+}
+
+@container (max-width: 400px) {
+  .nutrition-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .nutrition-item {
+    padding: 12px;
+    gap: 10px;
+    min-height: 85px;
+  }
+
+  .nutrition-icon-wrapper {
+    width: 36px;
+    height: 36px;
+  }
+
+  .nutrition-icon {
+    font-size: 18px;
+  }
+
+  .nutrition-label {
+    font-size: 12px;
+  }
+
+  .nutrition-values {
+    font-size: 15px;
+  }
+
+  .progress-percentage {
+    font-size: 11px;
+    min-width: 32px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .nutrition-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .nutrition-item {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .nutrition-icon-wrapper {
+    width: 36px;
+    height: 36px;
+  }
+
+  .nutrition-icon {
+    font-size: 18px;
+  }
+
+  .nutrition-values {
+    font-size: 15px;
+  }
+
+  .nutrition-label {
+    font-size: 11px;
+  }
+
+  .nutrition-target {
+    font-size: 13px;
   }
 }

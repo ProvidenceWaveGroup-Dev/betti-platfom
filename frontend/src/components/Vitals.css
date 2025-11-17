@@ -146,8 +146,9 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(74, 158, 255, 0.2);
   border-radius: 12px;
-  padding: 16px 24px;
+  padding: 12px 20px;
   transition: all 0.3s ease;
+  max-height: 100px;
 }
 
 .vitals-mini:hover {
@@ -158,28 +159,28 @@
 .vitals-mini .mini-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .vitals-mini .mini-icon {
-  font-size: 24px;
+  font-size: 18px;
 }
 
 .vitals-mini .mini-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-light);
 }
 
 .mini-status {
   margin-left: auto;
-  font-size: 13px;
-  padding: 4px 12px;
-  border-radius: 12px;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .mini-status.status-normal {
@@ -188,36 +189,45 @@
 }
 
 .mini-vitals-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
 }
 
 .mini-vital-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
 }
 
 .mini-vital-icon {
-  font-size: 20px;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
 .mini-vital-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  min-width: 0;
 }
 
 .mini-vital-value {
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-light);
+  line-height: 1;
 }
 
 .mini-vital-label {
-  font-size: 11px;
+  font-size: 8px;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  text-transform: capitalize;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

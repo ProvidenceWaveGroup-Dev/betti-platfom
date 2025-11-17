@@ -58,7 +58,8 @@ function BLEDevices({ isCollapsed = false }) {
       setDevices([])
       setScanStatus('scanning')
 
-      const response = await fetch(`http://${window.location.hostname}:3001/api/ble/scan`, {
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
+      const response = await fetch(`${protocol}//${window.location.hostname}:3001/api/ble/scan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -113,15 +114,38 @@ function BLEDevices({ isCollapsed = false }) {
   }
 
   if (isCollapsed) {
+    const recentDevices = devices.slice(0, 3) // Show last 3 discovered devices
+
     return (
       <div className="ble-mini">
         <div className="mini-header">
           <span className="mini-icon">📡</span>
-          <span className="mini-title">BLE Devices</span>
-          <span className={`mini-connection ${isConnected ? 'connected' : 'disconnected'}`}>
+          <span className="mini-title">BLE Sensors</span>
+          <span className={`mini-status ${isConnected ? 'connected' : 'disconnected'}`}>
             ● {isConnected ? 'Connected' : 'Disconnected'}
           </span>
-          <span className="mini-count">{devices.length} devices</span>
+        </div>
+        <div className="mini-ble-content">
+          <div className="mini-device-count">
+            {devices.length} {devices.length === 1 ? 'device' : 'devices'} found
+          </div>
+          {recentDevices.length > 0 && (
+            <div className="mini-device-list">
+              {recentDevices.map((device, index) => (
+                <div key={device.id} className="mini-device">
+                  <span className="mini-device-signal">{getSignalBars(device.rssi)}</span>
+                  <span className="mini-device-name">{device.name}</span>
+                  <span className="mini-device-rssi">{device.rssi}dBm</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {scanStatus === 'scanning' && (
+            <div className="mini-scanning">
+              <span className="mini-spinner">🔍</span>
+              <span>Scanning...</span>
+            </div>
+          )}
         </div>
       </div>
     )

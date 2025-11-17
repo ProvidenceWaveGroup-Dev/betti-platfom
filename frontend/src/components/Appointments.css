@@ -133,8 +133,9 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(74, 158, 255, 0.2);
   border-radius: 12px;
-  padding: 16px 24px;
+  padding: 12px 20px;
   transition: all 0.3s ease;
+  max-height: 80px;
 }
 
 .appointments-mini:hover {
@@ -145,44 +146,48 @@
 .mini-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .mini-icon {
-  font-size: 24px;
+  font-size: 18px;
 }
 
 .mini-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-light);
 }
 
 .mini-count {
   margin-left: auto;
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-muted);
   background: rgba(74, 158, 255, 0.15);
-  padding: 4px 12px;
-  border-radius: 12px;
+  padding: 2px 8px;
+  border-radius: 8px;
 }
 
 .mini-content {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 8px 0;
+  gap: 12px;
+  padding: 4px 0;
 }
 
 .mini-time {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--accent-blue);
-  min-width: 90px;
+  min-width: 70px;
+  flex-shrink: 0;
 }
 
 .mini-text {
-  font-size: 15px;
+  font-size: 12px;
   color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
