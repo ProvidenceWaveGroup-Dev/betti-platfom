@@ -129,7 +129,33 @@
       "totalFiber": 4,
       "totalSodium": 0,
       "createdAt": "2025-11-17T16:53:51.010Z"
+    },
+    {
+      "id": 1763493389114,
+      "date": "2025-11-18",
+      "mealType": "snack",
+      "time": "12:16 PM",
+      "foods": [
+        {
+          "name": "Apple",
+          "category": "fruit",
+          "calories": 95,
+          "protein": 0.5,
+          "carbs": 25,
+          "fat": 0.3,
+          "fiber": 4,
+          "unit": "medium",
+          "quantity": 1
+        }
+      ],
+      "totalCalories": 95,
+      "totalProtein": 0.5,
+      "totalCarbs": 25,
+      "totalFat": 0.3,
+      "totalFiber": 4,
+      "totalSodium": 0,
+      "createdAt": "2025-11-18T19:16:29.114Z"
     }
   ],
-  "lastUpdated": "2025-11-17T16:53:51.010Z"
+  "lastUpdated": "2025-11-18T19:16:29.114Z"
 }
