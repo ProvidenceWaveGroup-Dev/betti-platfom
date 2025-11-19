@@ -1,0 +1,241 @@
+.medication-card {
+  background: rgba(20, 20, 30, 0.6);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.medication-card.collapsed {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px 20px;
+  transition: all 0.3s ease;
+  max-height: 80px;
+}
+
+.medication-card.collapsed:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(74, 158, 255, 0.4);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.2);
+}
+
+.card-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-light);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.completion-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.completion-text {
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+.completion-percentage {
+  color: var(--text-light);
+  font-weight: 600;
+  background: rgba(74, 158, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.completion-badge {
+  font-size: 12px;
+  color: var(--text-light);
+  background: rgba(74, 158, 255, 0.2);
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.progress-section {
+  margin-bottom: 24px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #4a9eff 0%, #00d4ff 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.medications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.medications-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.medications-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.medications-list::-webkit-scrollbar-thumb {
+  background: rgba(74, 158, 255, 0.3);
+  border-radius: 3px;
+}
+
+.medications-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 158, 255, 0.5);
+}
+
+.medication-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: rgba(10, 10, 20, 0.5);
+  border-radius: 12px;
+  border-left: 4px solid #4a9eff;
+  transition: all 0.3s ease;
+}
+
+.medication-item:hover {
+  background: rgba(20, 20, 30, 0.7);
+  transform: translateX(4px);
+}
+
+.medication-item.completed {
+  border-left-color: #4CAF50;
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.medication-item.overdue {
+  border-left-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.med-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.med-icon {
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+}
+
+.med-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.med-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+.med-time {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: 'Courier New', monospace;
+}
+
+.med-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.med-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.med-button.pending {
+  border-color: #4a9eff;
+  color: #4a9eff;
+}
+
+.med-button.taken {
+  border-color: #4CAF50;
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+.completion-message {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 12px;
+  text-align: center;
+  color: #4CAF50;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* Animations */
+@keyframes checkmark {
+  0% {
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.med-button.taken {
+  animation: checkmark 0.3s ease;
+}

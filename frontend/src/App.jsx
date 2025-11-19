@@ -5,6 +5,7 @@ import Vitals from './components/Vitals'
 import Nutrition from './components/Nutrition'
 import Fitness from './components/Fitness'
 import Hydration from './components/Hydration'
+import Medication from './components/Medication'
 import BLEDevices from './components/BLEDevices'
 import VideoChat from './components/VideoChat'
 import './App.css'
@@ -16,13 +17,14 @@ function App() {
     nutrition: 'collapsed',
     fitness: 'collapsed',
     hydration: 'collapsed',
+    medication: 'collapsed',
     appointments: 'collapsed',
     sensors: 'collapsed',
     video: 'hidden'
   })
 
   // Static panel order
-  const panelOrder = ['health', 'appointments', 'nutrition', 'fitness', 'hydration', 'sensors']
+  const panelOrder = ['health', 'appointments', 'medication', 'nutrition', 'fitness', 'hydration', 'sensors']
 
   // Helper function for main panels: only toggle between collapsed and visible
   const getNextPanelState = (currentState) => {
@@ -60,6 +62,11 @@ function App() {
         ...prev,
         hydration: getNextPanelState(prev.hydration)
       }))
+    } else if (view === 'medication') {
+      setPanelState(prev => ({
+        ...prev,
+        medication: getNextPanelState(prev.medication)
+      }))
     } else if (view === 'appointments') {
       setPanelState(prev => ({
         ...prev,
@@ -95,6 +102,7 @@ function App() {
     if (panelState.nutrition === 'visible' || panelState.nutrition === 'collapsed') activePanels.push('nutrition')
     if (panelState.fitness === 'visible' || panelState.fitness === 'collapsed') activePanels.push('fitness')
     if (panelState.hydration === 'visible' || panelState.hydration === 'collapsed') activePanels.push('hydration')
+    if (panelState.medication === 'visible' || panelState.medication === 'collapsed') activePanels.push('medication')
     if (panelState.appointments === 'visible' || panelState.appointments === 'collapsed') activePanels.push('appointments')
     if (panelState.sensors === 'visible' || panelState.sensors === 'collapsed') activePanels.push('sensors')
 
@@ -122,6 +130,8 @@ function App() {
         return <Fitness isCollapsed={isCollapsed} />
       case 'hydration':
         return <Hydration isCollapsed={isCollapsed} />
+      case 'medication':
+        return <Medication isCollapsed={isCollapsed} />
       case 'sensors':
         return <BLEDevices isCollapsed={isCollapsed} />
       default:
@@ -148,6 +158,9 @@ function App() {
             break
           case 'hydration':
             component = <Hydration isCollapsed={true} />
+            break
+          case 'medication':
+            component = <Medication isCollapsed={true} />
             break
           case 'appointments':
             component = <Appointments isCollapsed={true} />

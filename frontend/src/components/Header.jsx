@@ -23,6 +23,7 @@ function Header({ onNavigate, activeView = 'home' }) {
     { id: 'home', label: 'Betti', icon: '/Betti Logo TM.png', isLogo: true },
     { id: 'health', label: 'Health', icon: '❤️' },
     { id: 'appointments', label: 'Appointments', icon: '📅' },
+    { id: 'medication', label: 'Medication', icon: '💊' },
     { id: 'fitness', label: 'Fitness', icon: '💪' },
     { id: 'video', label: 'Video', icon: '📹' },
     { id: 'nutrition', label: 'Nutrition', icon: '🥗' },
