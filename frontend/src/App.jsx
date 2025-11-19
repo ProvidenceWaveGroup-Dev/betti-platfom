@@ -22,98 +22,84 @@ function App() {
     sensors: 'collapsed',
     video: 'hidden'
   })
+  const [maximizedPanel, setMaximizedPanel] = useState(null)
 
-  // Static panel order
+  // Static panel order for sidebar
   const panelOrder = ['health', 'appointments', 'medication', 'nutrition', 'fitness', 'hydration', 'sensors']
-
-  // Helper function for main panels: only toggle between collapsed and visible
-  const getNextPanelState = (currentState) => {
-    switch (currentState) {
-      case 'collapsed':
-        return 'visible'
-      case 'visible':
-        return 'collapsed'
-      default:
-        return 'collapsed'
-    }
-  }
 
   const handleNavigate = (view) => {
     setActiveView(view)
 
-    // Cycle panels through hidden -> collapsed -> visible -> hidden
-    if (view === 'health') {
-      setPanelState(prev => ({
-        ...prev,
-        health: getNextPanelState(prev.health)
-      }))
-    } else if (view === 'nutrition') {
-      setPanelState(prev => ({
-        ...prev,
-        nutrition: getNextPanelState(prev.nutrition)
-      }))
-    } else if (view === 'fitness') {
-      setPanelState(prev => ({
-        ...prev,
-        fitness: getNextPanelState(prev.fitness)
-      }))
-    } else if (view === 'hydration') {
-      setPanelState(prev => ({
-        ...prev,
-        hydration: getNextPanelState(prev.hydration)
-      }))
-    } else if (view === 'medication') {
-      setPanelState(prev => ({
-        ...prev,
-        medication: getNextPanelState(prev.medication)
-      }))
-    } else if (view === 'appointments') {
-      setPanelState(prev => ({
-        ...prev,
-        appointments: getNextPanelState(prev.appointments)
-      }))
-    } else if (view === 'sensors') {
-      setPanelState(prev => ({
-        ...prev,
-        sensors: getNextPanelState(prev.sensors)
-      }))
-    } else if (view === 'video') {
-      setPanelState(prev => ({
-        ...prev,
-        video: prev.video === 'visible' ? 'hidden' : 'visible'
-      }))
+    // Single panel system - only one panel can be maximized at a time
+    if (view === 'home') {
+      setMaximizedPanel(null)
+      // Show all panels as collapsed for quick status overview
+      setPanelState({
+        health: 'collapsed',
+        nutrition: 'collapsed',
+        fitness: 'collapsed',
+        hydration: 'collapsed',
+        medication: 'collapsed',
+        appointments: 'collapsed',
+        sensors: 'collapsed',
+        video: 'hidden'
+      })
+      return
     }
 
-    console.log('Navigated to:', view, 'State:', panelState)
+    if (view === 'video') {
+      // Video is special - it's either visible or hidden
+      if (maximizedPanel === 'video') {
+        setMaximizedPanel(null)
+        setPanelState(prev => ({ ...prev, video: 'hidden' }))
+      } else {
+        setMaximizedPanel('video')
+        setPanelState({
+          health: 'hidden',
+          nutrition: 'hidden',
+          fitness: 'hidden',
+          hydration: 'hidden',
+          medication: 'hidden',
+          appointments: 'hidden',
+          sensors: 'hidden',
+          video: 'visible'
+        })
+      }
+      return
+    }
+
+    // For all other panels
+    if (maximizedPanel === view) {
+      // If this panel is already maximized, close it
+      setMaximizedPanel(null)
+      setPanelState(prev => ({ ...prev, [view]: 'hidden' }))
+    } else {
+      // Maximize this panel and show others as collapsed in sidebar
+      setMaximizedPanel(view)
+      const newState = {
+        health: 'collapsed',
+        nutrition: 'collapsed',
+        fitness: 'collapsed',
+        hydration: 'collapsed',
+        medication: 'collapsed',
+        appointments: 'collapsed',
+        sensors: 'collapsed',
+        video: 'hidden'
+      }
+      newState[view] = 'visible'
+      setPanelState(newState)
+    }
+
+    console.log('Navigated to:', view, 'Maximized:', view === maximizedPanel ? null : view)
   }
 
-  // Calculate dynamic layout based on visible and collapsed panels
-  const getLayoutConfig = () => {
-    const isVideoActive = panelState.video === 'visible'
-
-    if (isVideoActive) {
-      return { isVideoActive: true }
-    }
-
-    // Count visible and collapsed panels for dynamic scaling
-    const activePanels = []
-
-    if (panelState.health === 'visible' || panelState.health === 'collapsed') activePanels.push('health')
-    if (panelState.nutrition === 'visible' || panelState.nutrition === 'collapsed') activePanels.push('nutrition')
-    if (panelState.fitness === 'visible' || panelState.fitness === 'collapsed') activePanels.push('fitness')
-    if (panelState.hydration === 'visible' || panelState.hydration === 'collapsed') activePanels.push('hydration')
-    if (panelState.medication === 'visible' || panelState.medication === 'collapsed') activePanels.push('medication')
-    if (panelState.appointments === 'visible' || panelState.appointments === 'collapsed') activePanels.push('appointments')
-    if (panelState.sensors === 'visible' || panelState.sensors === 'collapsed') activePanels.push('sensors')
-
-    return {
-      isVideoActive: false,
-      activePanels,
-      totalActive: activePanels.length
-    }
+  const layoutConfig = {
+    isVideoActive: panelState.video === 'visible',
+    maximizedPanel,
+    sidebarPanels: panelOrder.filter(panel =>
+      panelState[panel] === 'collapsed' && panel !== maximizedPanel
+    )
   }
-
-  const layoutConfig = getLayoutConfig()
 
   // Helper function to get panel component by key with correct collapsed state
   const getPanelComponent = (key) => {
@@ -141,85 +127,73 @@ function App() {
 
   const renderLayout = () => {
     if (layoutConfig.isVideoActive) {
-      // Show all panels in sidebar as mini cards, in user-defined order
-      const sidebarPanels = panelOrder.map(panelKey => {
-        let component;
-        const isEnabled = panelState[panelKey] === 'visible' || panelState[panelKey] === 'collapsed'
-
-        switch (panelKey) {
-          case 'health':
-            component = <Vitals isCollapsed={true} />
-            break
-          case 'nutrition':
-            component = <Nutrition isCollapsed={true} />
-            break
-          case 'fitness':
-            component = <Fitness isCollapsed={true} />
-            break
-          case 'hydration':
-            component = <Hydration isCollapsed={true} />
-            break
-          case 'medication':
-            component = <Medication isCollapsed={true} />
-            break
-          case 'appointments':
-            component = <Appointments isCollapsed={true} />
-            break
-          case 'sensors':
-            component = <BLEDevices isCollapsed={true} />
-            break
-          default:
-            return null
-        }
-
-        return (
-          <div key={panelKey} className={`sidebar-item ${isEnabled ? 'enabled' : 'disabled'}`}>
-            {component}
-          </div>
-        )
-      }).filter(Boolean) // Remove any null components
-
+      // Video mode - full screen video
       return (
         <main className="main-content video-active">
           <div className="video-section">
             <VideoChat />
           </div>
-          <div className="sidebar-section">
-            {sidebarPanels}
+        </main>
+      )
+    }
+
+    if (layoutConfig.maximizedPanel) {
+      // Single panel layout - 2/3 width centered with sidebar
+      const maximizedComponent = getPanelComponent(layoutConfig.maximizedPanel)
+      const sidebarComponents = layoutConfig.sidebarPanels.map(panelKey => ({
+        key: panelKey,
+        component: getPanelComponent(panelKey)
+      }))
+
+      return (
+        <main className="main-content single-panel-layout">
+          <div className="sidebar-left">
+            {sidebarComponents.slice(0, Math.ceil(sidebarComponents.length / 2)).map(({ key, component }) => (
+              <div key={key} className="sidebar-item">
+                {component}
+              </div>
+            ))}
+          </div>
+
+          <div className="maximized-panel">
+            {maximizedComponent}
+          </div>
+
+          <div className="sidebar-right">
+            {sidebarComponents.slice(Math.ceil(sidebarComponents.length / 2)).map(({ key, component }) => (
+              <div key={key} className="sidebar-item">
+                {component}
+              </div>
+            ))}
           </div>
         </main>
       )
     }
 
-    // Dynamic scaling layout based on visible and collapsed panels in user-defined order
-    const activePanels = panelOrder
-      .filter(panelKey => panelState[panelKey] === 'visible' || panelState[panelKey] === 'collapsed')
-      .map((panelKey, index) => ({
+    // Default state - show all panels as collapsed for quick status overview
+    const collapsedPanels = panelOrder
+      .filter(panelKey => panelState[panelKey] === 'collapsed')
+      .map(panelKey => ({
         key: panelKey,
-        component: getPanelComponent(panelKey),
-        index: index
+        component: getPanelComponent(panelKey)
       }))
 
-    // Calculate grid columns based on active panels
-    const gridColumns = Math.max(1, activePanels.length)
-
     return (
-      <main className="main-content dynamic-layout">
-        {activePanels.length > 0 ? (
-          <div className="dynamic-grid" style={{
-            gridTemplateColumns: `repeat(${gridColumns}, 1fr)`
-          }}>
-            {activePanels.map(({ key, component }) => (
-              <div key={key} className="panel-column">
-                {component}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <p>Click the icons above to show panels</p>
-          </div>
-        )}
+      <main className="main-content overview-layout">
+        <div className="overview-grid">
+          {collapsedPanels.map(({ key, component }) => (
+            <div
+              key={key}
+              className="overview-panel"
+              onClick={() => handleNavigate(key)}
+            >
+              {component}
+            </div>
+          ))}
+        </div>
+        <div className="overview-message">
+          <p>Click any panel above to maximize it, or use the header icons</p>
+        </div>
       </main>
     )
   }

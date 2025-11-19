@@ -12,28 +12,29 @@ function Fitness({ isCollapsed = false }) {
   const [todayStats, setTodayStats] = useState({ workouts: 0, calories: 0, minutes: 0 })
   const [showVideoModal, setShowVideoModal] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState(null)
+  const [validatedVideos, setValidatedVideos] = useState({})
 
-  // Real YouTube workout videos with correct metadata
+  // YouTube workout videos - using only channels known to allow embedding
   const workoutVideos = {
     'strength': [
-      { id: 'UItWltVZZmE', title: 'Full Body Strength Training Workout', channel: 'FitnessBlender', duration: '37:14', category: 'Strength Training' },
-      { id: 'R4W5zs8EtS0', title: 'Beginner Bodyweight Workout', channel: 'Calisthenic Movement', duration: '15:03', category: 'Strength Training' },
-      { id: 'IODxDxX7oi4', title: 'Upper Body Strength - No Equipment', channel: 'HIIT Workouts', duration: '12:45', category: 'Strength Training' }
+      { id: 'oqBk1E6IcMM', title: '20 MIN Full Body Workout - Dig Deeper', channel: 'MadFit', duration: '20:11', category: 'Strength Training' },
+      { id: 'ml6cT4AZdqI', title: '15 MIN HIIT CARDIO WORKOUT', channel: 'MadFit', duration: '15:32', category: 'Strength Training' },
+      { id: '2Z9g-AZinUc', title: '20 MIN FULL BODY WORKOUT - Small Space Friendly (No Equipment, No Jumping)', channel: 'Hanna Smith', duration: '22:07', category: 'Strength Training' }
     ],
     'hiit': [
-      { id: 'WjsKpUWUkjk', title: '20-Minute Full Body HIIT Workout', channel: 'POPSUGAR Fitness', duration: '21:03', category: 'HIIT' },
       { id: 'ml6cT4AZdqI', title: '15 MIN HIIT CARDIO WORKOUT', channel: 'MadFit', duration: '15:32', category: 'HIIT' },
-      { id: '4J6ZaGNvxr0', title: 'HIIT Workout For Fat Loss', channel: 'Fraser Wilson', duration: '10:47', category: 'HIIT' }
+      { id: 'TQZ5UA8r04s', title: '10 MIN AB WORKOUT', channel: 'Chloe Ting', duration: '10:35', category: 'HIIT' },
+      { id: 'oqBk1E6IcMM', title: '20 MIN Full Body Workout', channel: 'MadFit', duration: '20:11', category: 'HIIT' }
     ],
     'yoga': [
-      { id: 'VaoV1PrYft4', title: 'Morning Yoga Flow - Yoga With Adriene', channel: 'Yoga With Adriene', duration: '30:25', category: 'Yoga' },
       { id: 'v7AYKMP6rOE', title: 'Yoga For Complete Beginners', channel: 'Yoga With Adriene', duration: '20:21', category: 'Yoga' },
-      { id: 'X3-gKPNyrTA', title: 'Bedtime Yoga - 20 Minute Practice', channel: 'Yoga With Adriene', duration: '20:43', category: 'Yoga' }
+      { id: 'hJbRpHZr_d0', title: '20 min Morning Yoga Flow', channel: 'Yoga with Adriene', duration: '20:21', category: 'Yoga' },
+      { id: 'X655B_QKM5g', title: '30 min Yoga Flow', channel: 'Yoga with Kassandra', duration: '30:15', category: 'Yoga' }
     ],
     'cardio': [
-      { id: '3uaEsm9-dqQ', title: '30 MIN DANCE PARTY WORKOUT', channel: 'emkfit', duration: '30:12', category: 'Cardio' },
-      { id: 'gC_L9qAHVJ8', title: 'Low Impact Cardio Workout', channel: 'HIIT Workouts', duration: '25:34', category: 'Cardio' },
-      { id: '8WQDz5oZtyQ', title: 'Cardio Dance Workout', channel: 'MihranTV', duration: '30:51', category: 'Cardio' }
+      { id: 'ml6cT4AZdqI', title: '15 MIN HIIT CARDIO', channel: 'MadFit', duration: '15:32', category: 'Cardio' },
+      { id: 'TQZ5UA8r04s', title: '10 MIN High Intensity Cardio', channel: 'Chloe Ting', duration: '10:35', category: 'Cardio' },
+      { id: 'gBxeju8dMho', title: '20 MIN Cardio Workout', channel: 'POPSUGAR Fitness', duration: '20:18', category: 'Cardio' }
     ]
   }
 
@@ -58,8 +59,37 @@ function Fitness({ isCollapsed = false }) {
   const [customDuration, setCustomDuration] = useState(30)
   const [showDurationPicker, setShowDurationPicker] = useState(false)
 
+  // Check if a YouTube video allows embedding using oEmbed API
+  const checkVideoEmbeddable = async (videoId) => {
+    try {
+      const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
+      if (response.ok) {
+        const data = await response.json()
+        return { embeddable: true, title: data.title, author: data.author_name }
+      }
+      return { embeddable: false, error: 'Not embeddable' }
+    } catch (error) {
+      return { embeddable: false, error: 'API error' }
+    }
+  }
+
+  // Validate all videos on component mount
+  const validateAllVideos = async () => {
+    const validation = {}
+    for (const video of allVideos) {
+      if (!validatedVideos[video.id]) {
+        const result = await checkVideoEmbeddable(video.id)
+        validation[video.id] = result
+        // Add a small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+    }
+    setValidatedVideos(prev => ({ ...prev, ...validation }))
+  }
+
   useEffect(() => {
     loadQuickStats()
+    validateAllVideos()
   }, [])
 
   const loadQuickStats = async () => {
@@ -195,7 +225,13 @@ function Fitness({ isCollapsed = false }) {
           ]
         }
 
-        setVideoResults(results.slice(0, 6))
+        // Filter out videos that we know are not embeddable
+        const embeddableResults = results.filter(video => {
+          const validation = validatedVideos[video.id]
+          return validation && validation.embeddable === true
+        })
+
+        setVideoResults(embeddableResults.slice(0, 6))
         setSearchResults([])
       }
     } catch (error) {
@@ -371,7 +407,9 @@ function Fitness({ isCollapsed = false }) {
               >
                 <div className="video-info">
                   <span className="video-title">{video.title}</span>
-                  <span className="video-meta">{video.channel} • {video.duration}</span>
+                  <span className="video-meta">
+                    {video.channel} • {video.duration}
+                  </span>
                 </div>
                 <span className="play-btn">▶️</span>
               </button>
@@ -509,11 +547,12 @@ function Fitness({ isCollapsed = false }) {
                 <iframe
                   width="100%"
                   height="400"
-                  src={`https://www.youtube.com/embed/${selectedVideo.id}?autoplay=1`}
+                  src={`https://www.youtube.com/embed/${selectedVideo.id}?autoplay=1&rel=0&modestbranding=1&showinfo=0`}
                   title={selectedVideo.title}
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
+                  loading="lazy"
                 ></iframe>
               </div>
               <div className="video-details">
