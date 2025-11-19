@@ -19,7 +19,7 @@ function App() {
     hydration: 'collapsed',
     medication: 'collapsed',
     appointments: 'collapsed',
-    sensors: 'collapsed',
+    sensors: 'hidden',
     video: 'hidden'
   })
   const [maximizedPanel, setMaximizedPanel] = useState(null)
@@ -41,29 +41,30 @@ function App() {
         hydration: 'collapsed',
         medication: 'collapsed',
         appointments: 'collapsed',
-        sensors: 'collapsed',
+        sensors: 'hidden',
         video: 'hidden'
       })
       return
     }
 
     if (view === 'video') {
-      // Video is special - it's either visible or hidden
+      // Video follows same pattern as other panels
       if (maximizedPanel === 'video') {
         setMaximizedPanel(null)
         setPanelState(prev => ({ ...prev, video: 'hidden' }))
       } else {
         setMaximizedPanel('video')
-        setPanelState({
-          health: 'hidden',
-          nutrition: 'hidden',
-          fitness: 'hidden',
-          hydration: 'hidden',
-          medication: 'hidden',
-          appointments: 'hidden',
+        const newState = {
+          health: 'collapsed',
+          nutrition: 'collapsed',
+          fitness: 'collapsed',
+          hydration: 'collapsed',
+          medication: 'collapsed',
+          appointments: 'collapsed',
           sensors: 'hidden',
           video: 'visible'
-        })
+        }
+        setPanelState(newState)
       }
       return
     }
@@ -83,7 +84,7 @@ function App() {
         hydration: 'collapsed',
         medication: 'collapsed',
         appointments: 'collapsed',
-        sensors: 'collapsed',
+        sensors: 'hidden',
         video: 'hidden'
       }
       newState[view] = 'visible'
@@ -120,23 +121,14 @@ function App() {
         return <Medication isCollapsed={isCollapsed} />
       case 'sensors':
         return <BLEDevices isCollapsed={isCollapsed} />
+      case 'video':
+        return <VideoChat />
       default:
         return null
     }
   }
 
   const renderLayout = () => {
-    if (layoutConfig.isVideoActive) {
-      // Video mode - full screen video
-      return (
-        <main className="main-content video-active">
-          <div className="video-section">
-            <VideoChat />
-          </div>
-        </main>
-      )
-    }
-
     if (layoutConfig.maximizedPanel) {
       // Single panel layout - 2/3 width centered with sidebar
       const maximizedComponent = getPanelComponent(layoutConfig.maximizedPanel)

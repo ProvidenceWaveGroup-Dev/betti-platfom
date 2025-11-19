@@ -467,6 +467,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   height: 100%;
+  padding: 0 8px;
 }
 
 .maximized-panel {
@@ -494,6 +495,8 @@
   cursor: pointer;
   border-radius: 12px;
   overflow: hidden;
+  margin: 0 4px;
+  padding: 4px;
 }
 
 .sidebar-left .sidebar-item:hover,

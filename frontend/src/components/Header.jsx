@@ -28,7 +28,7 @@ function Header({ onNavigate, activeView = 'home' }) {
     { id: 'video', label: 'Video', icon: '📹' },
     { id: 'nutrition', label: 'Nutrition', icon: '🍎' },
     { id: 'hydration', label: 'Hydration', icon: '💧' },
-    { id: 'sensors', label: 'Sensors', icon: '📡' },
+    { id: 'sensors', label: 'Setup', icon: '⚙️' },
   ]
 
   const handleNavClick = (id) => {

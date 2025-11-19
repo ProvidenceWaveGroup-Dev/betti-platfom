@@ -2,35 +2,22 @@ import React, { useState, useEffect } from 'react'
 import './Vitals.css'
 
 function Vitals({ isCollapsed = false }) {
-  const [vitals, setVitals] = useState([])
+  // Use the exact data from your design image
+  const [vitals] = useState([
+    { icon: '❤️', label: 'BLOOD PRESSURE', value: '120/80', unit: 'mmHg', status: 'Normal', updated: '2 min ago' },
+    { icon: '💓', label: 'HEART RATE', value: '72', unit: 'bpm', status: 'Normal', updated: '2 min ago' },
+    { icon: '🫁', label: 'OXYGEN SAT', value: '98', unit: '%', status: 'Normal', updated: '3 min ago' },
+    { icon: '🌡️', label: 'TEMPERATURE', value: '98.6', unit: '°F', status: 'Normal', updated: '5 min ago' }
+  ])
 
-  useEffect(() => {
-    fetch('/src/data/vitals.json')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch vitals data')
-        }
-        return response.json()
-      })
-      .then(data => {
-        if (Array.isArray(data)) {
-          setVitals(data)
-        } else {
-          console.error('Vitals data is not an array:', data)
-          setVitals([])
-        }
-      })
-      .catch(error => {
-        console.error('Error loading vitals:', error)
-        // Set fallback data
-        setVitals([
-          { icon: '❤️', label: 'Blood Pressure', value: '120/80', unit: 'mmHg', status: 'Normal', updated: '2 min ago' },
-          { icon: '💓', label: 'Heart Rate', value: '72', unit: 'bpm', status: 'Normal', updated: '2 min ago' },
-          { icon: '🫁', label: 'Oxygen Sat', value: '98', unit: '%', status: 'Normal', updated: '3 min ago' },
-          { icon: '🌡️', label: 'Temperature', value: '98.6', unit: '°F', status: 'Normal', updated: '5 min ago' }
-        ])
-      })
-  }, [])
+  const [weight] = useState({
+    icon: '⚖️',
+    label: 'WEIGHT',
+    value: '165',
+    unit: 'lbs',
+    status: 'Stable',
+    updated: '1 hour ago'
+  })
 
   if (isCollapsed) {
     return (
@@ -56,33 +43,45 @@ function Vitals({ isCollapsed = false }) {
   }
 
   return (
-    <div className="vitals-card">
-      <div className="card-header">
-        <h2 className="card-title">Health Vitals</h2>
-        <span className="status-indicator status-normal">
+    <div className="vitals-widget">
+      <div className="vitals-header">
+        <h2 className="vitals-title">Health Vitals</h2>
+        <span className="vitals-status">
           <span className="status-dot"></span>
           All Systems Normal
         </span>
       </div>
+
       <div className="vitals-grid">
-        {Array.isArray(vitals) && vitals.map((vital, index) => (
-          <div key={index} className="vital-item">
-            <div className="vital-icon-wrapper">
-              <span className="vital-icon">{vital.icon}</span>
-            </div>
-            <div className="vital-content">
+        {vitals.map((vital, index) => (
+          <div key={index} className={`vital-card status-${vital.status.toLowerCase()}`}>
+            <span className="vital-icon">{vital.icon}</span>
+            <div className="vital-info">
               <div className="vital-label">{vital.label}</div>
               <div className="vital-value">
                 {vital.value}
                 <span className="vital-unit">{vital.unit}</span>
               </div>
-              <div className={`vital-status status-${vital.status.toLowerCase()}`}>
-                {vital.status}
-              </div>
-              <div className="vital-updated">Updated {vital.updated}</div>
+              <div className="vital-status">{vital.status}</div>
+              <div className="vital-time">Updated {vital.updated}</div>
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="weight-section">
+        <div className={`vital-card status-${weight.status.toLowerCase()}`}>
+          <span className="vital-icon">{weight.icon}</span>
+          <div className="vital-info">
+            <div className="vital-label">{weight.label}</div>
+            <div className="vital-value">
+              {weight.value}
+              <span className="vital-unit">{weight.unit}</span>
+            </div>
+            <div className="vital-status">{weight.status}</div>
+            <div className="vital-time">Updated {weight.updated}</div>
+          </div>
+        </div>
       </div>
     </div>
   )
