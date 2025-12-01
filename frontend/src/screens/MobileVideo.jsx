@@ -44,18 +44,12 @@ const MobileVideo = ({ onNavigate }) => {
 
     initializePreview()
 
-    // Initialize WebSocket connection with mobile-friendly fallbacks
-    const VIDEO_SERVER = import.meta.env.VITE_VIDEO_SERVER_URL || `${window.location.hostname}:8080`
+    // Initialize WebSocket connection using proxy path for ngrok compatibility
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${protocol}//${VIDEO_SERVER}`
+    const wsUrl = `${protocol}//${window.location.host}/video`
 
-    console.log('🔌 Attempting to connect to video server:', wsUrl)
+    console.log('🔌 Attempting to connect to video server via proxy:', wsUrl)
     console.log('📍 Window location:', window.location.href)
-    console.log('🌐 Environment:', {
-      protocol: window.location.protocol,
-      hostname: window.location.hostname,
-      VIDEO_SERVER
-    })
 
     const ws = new WebSocket(wsUrl)
 

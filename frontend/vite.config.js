@@ -19,19 +19,32 @@ export default defineConfig({
     },
     // Proxy configuration for ngrok and local development
     proxy: {
+      // Nutrition API (separate server on port 3002)
+      '/api/nutrition': {
+        target: 'http://localhost:3002',
+        changeOrigin: true,
+        secure: false
+      },
       // Main backend API
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
+        secure: false
+      },
+      // Backend WebSocket for BLE/sensor data
+      '/ws': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
         secure: false,
-        ws: true // WebSocket support for real-time updates
+        ws: true,
+        rewrite: (path) => path.replace(/^\/ws/, '')
       },
       // Video chat WebSocket signaling
       '/video': {
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
-        ws: true, // Critical for WebRTC signaling
+        ws: true,
         rewrite: (path) => path.replace(/^\/video/, '')
       }
     }

@@ -58,8 +58,8 @@ function BLEDevices({ isCollapsed = false }) {
       setDevices([])
       setScanStatus('scanning')
 
-      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
-      const response = await fetch(`${protocol}//${window.location.hostname}:3001/api/ble/scan`, {
+      // Use relative URL to leverage Vite proxy - works with ngrok
+      const response = await fetch('/api/ble/scan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -11,20 +11,41 @@ export default defineConfig({
     allowedHosts: ['halibut-saved-gannet.ngrok-free.app'],
     // Proxy configuration for ngrok
     proxy: {
-      // Main backend API (backend uses HTTPS)
-      '/api': {
-        target: 'https://localhost:3001',
+      // Nutrition API (separate server on port 3002)
+      '/api/nutrition': {
+        target: 'http://localhost:3002',
         changeOrigin: true,
-        secure: false,
-        ws: true
+        secure: false
       },
-      // Video chat WebSocket signaling (HTTP for ngrok mode)
-      '/video': {
-        target: 'http://localhost:8080',
+      // Main backend API (backend uses HTTP in ngrok mode)
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false
+      },
+      // Backend WebSocket for BLE/sensor data
+      '/ws': {
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
         ws: true,
-        rewrite: (path) => path.replace(/^\/video/, '')
+        rewrite: (path) => path.replace(/^\/ws/, '')
+      },
+      // Video chat WebSocket signaling (HTTPS - video server has SSL certs)
+      '/video': {
+        target: 'https://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/video/, ''),
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('Video proxy error:', err.message)
+          })
+          proxy.on('proxyReqWs', (proxyReq, req, socket, options, head) => {
+            console.log('Video WebSocket proxy request to:', options.target)
+          })
+        }
       }
     }
   },

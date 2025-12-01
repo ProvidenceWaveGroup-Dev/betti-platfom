@@ -2,9 +2,8 @@
 
 class NutritionApi {
   constructor() {
-    // Force HTTP for nutrition API since it doesn't have SSL setup
-    const protocol = 'http:'
-    this.baseUrl = `${protocol}//${window.location.hostname}:3002/api/nutrition`
+    // Use relative URL to leverage Vite proxy - works with ngrok
+    this.baseUrl = '/api/nutrition'
   }
 
   async request(endpoint, options = {}) {

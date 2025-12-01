@@ -104,8 +104,12 @@ class WebSocketClient {
   }
 }
 
-// Create singleton instance - use secure WebSocket if page is HTTPS
+// Create singleton instance
+// Use /ws proxy path to work through Vite proxy and ngrok
 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-const wsClient = new WebSocketClient(`${protocol}//${window.location.hostname}:3001`)
+const wsUrl = `${protocol}//${window.location.host}/ws`
+
+console.log('🔌 WebSocket connecting to:', wsUrl)
+const wsClient = new WebSocketClient(wsUrl)
 
 export default wsClient
