@@ -43,7 +43,12 @@
       "Bash(cd:*)",
       "Bash(NGROK_MODE=true npm run dev:*)",
       "Bash(npm ls:*)",
-      "Bash(npm:*)"
+      "Bash(npm:*)",
+      "Bash(git config:*)",
+      "Bash(echo:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(cmd /c \"taskkill /F /PID 178552\")",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
