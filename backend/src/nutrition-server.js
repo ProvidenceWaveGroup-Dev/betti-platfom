@@ -2,8 +2,17 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import nutritionRoutes from './routes/nutrition.js'
+import database from './services/database.js'
 
 dotenv.config()
+
+// Initialize database before anything else
+try {
+  database.init()
+} catch (error) {
+  console.error('❌ Failed to initialize database:', error.message)
+  process.exit(1)
+}
 
 const app = express()
 const PORT = process.env.NUTRITION_PORT || 3002
@@ -51,3 +60,13 @@ app.listen(PORT, HOST, () => {
   console.log(`🥗 Nutrition API server running at http://${HOST}:${PORT}`)
   console.log(`📊 Nutrition endpoints available`)
 })
+
+// Graceful shutdown
+function shutdown(signal) {
+  console.log(`\n${signal} received. Shutting down nutrition server...`)
+  database.close()
+  process.exit(0)
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))

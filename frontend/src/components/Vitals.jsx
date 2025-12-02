@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import vitalsApi from '../services/vitalsApi'
 import wsClient from '../services/websocket'
 import './Vitals.css'
+import '../styles/mobileHealth.scss'
 
 // Default fallback data when API is unavailable or returns empty
 const DEFAULT_VITALS = [
@@ -69,7 +70,7 @@ const VITAL_INPUT_CONFIG = {
   }
 }
 
-function Vitals({ isCollapsed = false }) {
+function Vitals({ isCollapsed = false, variant = 'desktop', onNavigate }) {
   const [vitals, setVitals] = useState(DEFAULT_VITALS)
   const [weight, setWeight] = useState(DEFAULT_WEIGHT)
   const [loading, setLoading] = useState(true)
@@ -82,13 +83,14 @@ function Vitals({ isCollapsed = false }) {
   const [inputSecondary, setInputSecondary] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  const isMobile = variant === 'mobile'
+
   useEffect(() => {
     loadVitals()
 
     // Listen for real-time vital updates from BLE devices
     const handleVitalUpdate = (data) => {
       console.log('Received real-time vital update:', data)
-      // Reload vitals to get the latest data
       loadVitals()
     }
 
@@ -107,11 +109,9 @@ function Vitals({ isCollapsed = false }) {
       const response = await vitalsApi.getLatest()
 
       if (response.success && response.data && response.data.length > 0) {
-        // Separate weight from other vitals
         const weightVital = response.data.find(v => v.vitalType === 'weight')
         const otherVitals = response.data.filter(v => v.vitalType !== 'weight')
 
-        // Map API data to display format (already formatted by backend)
         if (otherVitals.length > 0) {
           setVitals(otherVitals)
         }
@@ -123,13 +123,11 @@ function Vitals({ isCollapsed = false }) {
     } catch (err) {
       console.error('Error loading vitals:', err)
       setError(err.message)
-      // Keep default values on error
     } finally {
       setLoading(false)
     }
   }
 
-  // Handle clicking on a vital value to edit
   const handleVitalClick = (vital) => {
     const vitalType = vital.vitalType
     const config = VITAL_INPUT_CONFIG[vitalType]
@@ -138,7 +136,6 @@ function Vitals({ isCollapsed = false }) {
 
     setEditingVital({ ...vital, config })
 
-    // Pre-fill with current values if available
     if (vital.value && vital.value !== '--' && vital.value !== '--/--') {
       if (config.hasTwoInputs && vital.value.includes('/')) {
         const [primary, secondary] = vital.value.split('/')
@@ -156,7 +153,6 @@ function Vitals({ isCollapsed = false }) {
     setShowInputModal(true)
   }
 
-  // Handle submitting new vital value
   const handleSubmitVital = async () => {
     if (!editingVital || !inputPrimary) return
 
@@ -185,13 +181,11 @@ function Vitals({ isCollapsed = false }) {
         source: 'manual'
       })
 
-      // Close modal and refresh data
       setShowInputModal(false)
       setEditingVital(null)
       setInputPrimary('')
       setInputSecondary('')
 
-      // Reload vitals to show the new value
       await loadVitals()
     } catch (err) {
       console.error('Error saving vital:', err)
@@ -201,7 +195,6 @@ function Vitals({ isCollapsed = false }) {
     }
   }
 
-  // Close modal
   const handleCloseModal = () => {
     setShowInputModal(false)
     setEditingVital(null)
@@ -209,16 +202,28 @@ function Vitals({ isCollapsed = false }) {
     setInputSecondary('')
   }
 
-  // Calculate overall status based on individual vital statuses
+  const getVitalStatus = (status) => {
+    const statusMap = {
+      'normal': { color: '#22c55e', class: 'normal' },
+      'stable': { color: '#22c55e', class: 'stable' },
+      'elevated': { color: '#f59e0b', class: 'warning' },
+      'high': { color: '#ef4444', class: 'critical' },
+      'low': { color: '#f59e0b', class: 'warning' },
+      'critical': { color: '#ef4444', class: 'critical' },
+      'fever': { color: '#ef4444', class: 'critical' }
+    }
+    return statusMap[(status || 'normal').toLowerCase()] || statusMap['normal']
+  }
+
   const getOverallStatus = () => {
     const allVitals = [...vitals, weight]
     const hasCritical = allVitals.some(v => v.status?.toLowerCase() === 'critical')
     const hasHigh = allVitals.some(v => ['high', 'fever'].includes(v.status?.toLowerCase()))
     const hasLow = allVitals.some(v => ['low', 'elevated'].includes(v.status?.toLowerCase()))
 
-    if (hasCritical) return { text: 'Critical Alert', class: 'status-critical' }
-    if (hasHigh || hasLow) return { text: 'Needs Attention', class: 'status-warning' }
-    return { text: 'All Systems Normal', class: 'status-normal' }
+    if (hasCritical) return { text: 'Critical Alert', class: isMobile ? 'critical' : 'status-critical' }
+    if (hasHigh || hasLow) return { text: 'Needs Attention', class: isMobile ? 'warning' : 'status-warning' }
+    return { text: 'All Systems Normal', class: isMobile ? 'normal' : 'status-normal' }
   }
 
   const overallStatus = getOverallStatus()
@@ -244,6 +249,7 @@ function Vitals({ isCollapsed = false }) {
                   <label>{config.primaryLabel}</label>
                   <input
                     type="number"
+                    inputMode={isMobile ? 'numeric' : undefined}
                     value={inputPrimary}
                     onChange={e => setInputPrimary(e.target.value)}
                     placeholder={config.primaryPlaceholder}
@@ -255,6 +261,7 @@ function Vitals({ isCollapsed = false }) {
                   <label>{config.secondaryLabel}</label>
                   <input
                     type="number"
+                    inputMode={isMobile ? 'numeric' : undefined}
                     value={inputSecondary}
                     onChange={e => setInputSecondary(e.target.value)}
                     placeholder={config.secondaryPlaceholder}
@@ -268,6 +275,7 @@ function Vitals({ isCollapsed = false }) {
                   <label>{config.primaryLabel}</label>
                   <input
                     type="number"
+                    inputMode={isMobile ? (config.label === 'Temperature' ? 'decimal' : 'numeric') : undefined}
                     step={config.label === 'Temperature' ? '0.1' : '1'}
                     value={inputPrimary}
                     onChange={e => setInputPrimary(e.target.value)}
@@ -297,7 +305,8 @@ function Vitals({ isCollapsed = false }) {
     )
   }
 
-  if (isCollapsed) {
+  // Collapsed desktop view
+  if (isCollapsed && !isMobile) {
     return (
       <div className="vitals-mini">
         <div className="mini-header">
@@ -320,6 +329,81 @@ function Vitals({ isCollapsed = false }) {
     )
   }
 
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="mobile-health">
+        <h2>Health Vitals</h2>
+
+        {/* Status Header */}
+        <section className="vitals-status-header">
+          <div className={`status-indicator ${overallStatus.class}`}>
+            <span className="status-dot"></span>
+            {loading ? 'Loading...' : overallStatus.text}
+          </div>
+        </section>
+
+        {/* Current Vitals Cards */}
+        <section className="vitals-grid">
+          {vitals.map((vital, index) => {
+            const statusInfo = getVitalStatus(vital.status)
+            return (
+              <div key={vital.id || index} className={`vital-card ${statusInfo.class}`}>
+                <div className="vital-icon">{vital.icon}</div>
+                <div className="vital-info">
+                  <div className="vital-label">{vital.label}</div>
+                  <div
+                    className="vital-value clickable"
+                    onClick={() => handleVitalClick(vital)}
+                  >
+                    {vital.value}
+                    <span className="vital-unit">{vital.unit}</span>
+                    <span className="edit-hint">✎</span>
+                  </div>
+                  <div className="vital-status" style={{ color: statusInfo.color }}>
+                    {vital.status}
+                  </div>
+                  <div className="vital-time">Updated {vital.updated}</div>
+                </div>
+              </div>
+            )
+          })}
+        </section>
+
+        {/* Weight Section */}
+        <section className="weight-section">
+          <div className={`vital-card ${getVitalStatus(weight.status).class}`}>
+            <div className="vital-icon">{weight.icon}</div>
+            <div className="vital-info">
+              <div className="vital-label">{weight.label}</div>
+              <div
+                className="vital-value clickable"
+                onClick={() => handleVitalClick(weight)}
+              >
+                {weight.value}
+                <span className="vital-unit">{weight.unit}</span>
+                <span className="edit-hint">✎</span>
+              </div>
+              <div className="vital-status" style={{ color: getVitalStatus(weight.status).color }}>
+                {weight.status}
+              </div>
+              <div className="vital-time">Updated {weight.updated}</div>
+            </div>
+          </div>
+        </section>
+
+        {error && (
+          <div className="vitals-error">
+            <small>Unable to connect to vitals server</small>
+          </div>
+        )}
+
+        {renderInputModal()}
+      </div>
+    )
+  }
+
+  // Desktop full layout
   return (
     <div className="vitals-widget">
       <div className="vitals-header">

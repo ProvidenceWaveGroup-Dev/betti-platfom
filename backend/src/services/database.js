@@ -405,6 +405,73 @@ export const WorkoutRepo = {
 
 export const MedicationRepo = {
   /**
+   * Run database migrations for medication tables
+   */
+  runMigrations() {
+    const db = getDatabase()
+
+    // Check if we need to add new columns
+    const columns = db.prepare("PRAGMA table_info(medications)").all()
+    const columnNames = columns.map(c => c.name)
+
+    // Add new medication columns if they don't exist
+    if (!columnNames.includes('dosage_unit')) {
+      try { db.exec("ALTER TABLE medications ADD COLUMN dosage_unit TEXT DEFAULT 'tablet'") } catch (e) {}
+    }
+    if (!columnNames.includes('start_date')) {
+      try { db.exec("ALTER TABLE medications ADD COLUMN start_date DATE") } catch (e) {}
+    }
+    if (!columnNames.includes('end_date')) {
+      try { db.exec("ALTER TABLE medications ADD COLUMN end_date DATE") } catch (e) {}
+    }
+    if (!columnNames.includes('is_prn')) {
+      try { db.exec("ALTER TABLE medications ADD COLUMN is_prn INTEGER DEFAULT 0") } catch (e) {}
+    }
+    if (!columnNames.includes('prn_max_daily')) {
+      try { db.exec("ALTER TABLE medications ADD COLUMN prn_max_daily INTEGER") } catch (e) {}
+    }
+    if (!columnNames.includes('notes')) {
+      try { db.exec("ALTER TABLE medications ADD COLUMN notes TEXT") } catch (e) {}
+    }
+
+    // Check schedule columns
+    const schedCols = db.prepare("PRAGMA table_info(medication_schedules)").all()
+    const schedColNames = schedCols.map(c => c.name)
+
+    if (!schedColNames.includes('dosage_amount')) {
+      try { db.exec("ALTER TABLE medication_schedules ADD COLUMN dosage_amount REAL DEFAULT 1") } catch (e) {}
+    }
+    if (!schedColNames.includes('frequency_type')) {
+      try { db.exec("ALTER TABLE medication_schedules ADD COLUMN frequency_type TEXT DEFAULT 'daily'") } catch (e) {}
+    }
+    if (!schedColNames.includes('interval_days')) {
+      try { db.exec("ALTER TABLE medication_schedules ADD COLUMN interval_days INTEGER") } catch (e) {}
+    }
+    if (!schedColNames.includes('interval_start')) {
+      try { db.exec("ALTER TABLE medication_schedules ADD COLUMN interval_start DATE") } catch (e) {}
+    }
+    if (!schedColNames.includes('created_at')) {
+      try { db.exec("ALTER TABLE medication_schedules ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP") } catch (e) {}
+    }
+    // Add day_of_week for per-day dosing (Option A schema)
+    if (!schedColNames.includes('day_of_week')) {
+      try { db.exec("ALTER TABLE medication_schedules ADD COLUMN day_of_week TEXT") } catch (e) {}
+    }
+
+    // Create index if not exists
+    try {
+      db.exec("CREATE INDEX IF NOT EXISTS idx_med_schedules_med ON medication_schedules(medication_id, is_active)")
+    } catch (e) {}
+
+    // Create unique index for per-day scheduling
+    try {
+      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_med_schedule_unique
+               ON medication_schedules(medication_id, day_of_week, schedule_time)
+               WHERE day_of_week IS NOT NULL AND is_active = 1`)
+    } catch (e) {}
+  },
+
+  /**
    * Create a new medication with optional schedules
    * @param {Object} medication - Medication data
    * @param {Array} schedules - Optional array of schedule objects
@@ -412,14 +479,17 @@ export const MedicationRepo = {
    */
   create(medication, schedules = []) {
     const db = getDatabase()
+    this.runMigrations()
 
     const stmt = db.prepare(`
       INSERT INTO medications (
-        user_id, name, dosage, instructions, prescriber,
-        pharmacy, rx_number, refills_left, is_active
+        user_id, name, dosage, dosage_unit, instructions, prescriber,
+        pharmacy, rx_number, refills_left, start_date, end_date,
+        is_active, is_prn, prn_max_daily, notes
       ) VALUES (
-        @user_id, @name, @dosage, @instructions, @prescriber,
-        @pharmacy, @rx_number, @refills_left, @is_active
+        @user_id, @name, @dosage, @dosage_unit, @instructions, @prescriber,
+        @pharmacy, @rx_number, @refills_left, @start_date, @end_date,
+        @is_active, @is_prn, @prn_max_daily, @notes
       )
     `)
 
@@ -427,12 +497,18 @@ export const MedicationRepo = {
       user_id: medication.user_id || 1,
       name: medication.name,
       dosage: medication.dosage || null,
+      dosage_unit: medication.dosage_unit || 'tablet',
       instructions: medication.instructions || null,
       prescriber: medication.prescriber || null,
       pharmacy: medication.pharmacy || null,
       rx_number: medication.rx_number || null,
       refills_left: medication.refills_left ?? null,
-      is_active: medication.is_active ?? 1
+      start_date: medication.start_date || null,
+      end_date: medication.end_date || null,
+      is_active: medication.is_active ?? 1,
+      is_prn: medication.is_prn ?? 0,
+      prn_max_daily: medication.prn_max_daily ?? null,
+      notes: medication.notes || null
     })
 
     const medicationId = result.lastInsertRowid
@@ -441,21 +517,34 @@ export const MedicationRepo = {
     const createdSchedules = []
     if (schedules.length > 0) {
       const scheduleStmt = db.prepare(`
-        INSERT INTO medication_schedules (medication_id, schedule_time, days_of_week, is_active)
-        VALUES (@medication_id, @schedule_time, @days_of_week, @is_active)
+        INSERT INTO medication_schedules (
+          medication_id, dosage_amount, schedule_time, frequency_type,
+          days_of_week, interval_days, interval_start, is_active
+        ) VALUES (
+          @medication_id, @dosage_amount, @schedule_time, @frequency_type,
+          @days_of_week, @interval_days, @interval_start, @is_active
+        )
       `)
 
       for (const schedule of schedules) {
         const scheduleResult = scheduleStmt.run({
           medication_id: medicationId,
+          dosage_amount: schedule.dosage_amount ?? 1,
           schedule_time: schedule.time || schedule.schedule_time,
+          frequency_type: schedule.frequency_type || 'daily',
           days_of_week: schedule.days || schedule.days_of_week || 'daily',
+          interval_days: schedule.interval_days ?? null,
+          interval_start: schedule.interval_start || null,
           is_active: schedule.is_active ?? 1
         })
         createdSchedules.push({
           id: scheduleResult.lastInsertRowid,
+          dosage_amount: schedule.dosage_amount ?? 1,
           schedule_time: schedule.time || schedule.schedule_time,
+          frequency_type: schedule.frequency_type || 'daily',
           days_of_week: schedule.days || schedule.days_of_week || 'daily',
+          interval_days: schedule.interval_days ?? null,
+          interval_start: schedule.interval_start || null,
           is_active: 1
         })
       }
@@ -475,6 +564,7 @@ export const MedicationRepo = {
    */
   getById(id) {
     const db = getDatabase()
+    this.runMigrations()
 
     const medStmt = db.prepare('SELECT * FROM medications WHERE id = ?')
     const medication = medStmt.get(id)
@@ -483,6 +573,7 @@ export const MedicationRepo = {
 
     const scheduleStmt = db.prepare(`
       SELECT * FROM medication_schedules WHERE medication_id = ? AND is_active = 1
+      ORDER BY schedule_time
     `)
     medication.schedules = scheduleStmt.all(id)
 
@@ -497,6 +588,7 @@ export const MedicationRepo = {
    */
   getByUser(userId, activeOnly = true) {
     const db = getDatabase()
+    this.runMigrations()
 
     let query = 'SELECT * FROM medications WHERE user_id = ?'
     if (activeOnly) {
@@ -509,6 +601,7 @@ export const MedicationRepo = {
     // Get schedules for each medication
     const scheduleStmt = db.prepare(`
       SELECT * FROM medication_schedules WHERE medication_id = ? AND is_active = 1
+      ORDER BY schedule_time
     `)
 
     for (const med of medications) {
@@ -526,17 +619,24 @@ export const MedicationRepo = {
    */
   update(id, data) {
     const db = getDatabase()
+    this.runMigrations()
 
     const updateStmt = db.prepare(`
       UPDATE medications SET
         name = COALESCE(@name, name),
         dosage = COALESCE(@dosage, dosage),
+        dosage_unit = COALESCE(@dosage_unit, dosage_unit),
         instructions = COALESCE(@instructions, instructions),
         prescriber = COALESCE(@prescriber, prescriber),
         pharmacy = COALESCE(@pharmacy, pharmacy),
         rx_number = COALESCE(@rx_number, rx_number),
         refills_left = COALESCE(@refills_left, refills_left),
+        start_date = COALESCE(@start_date, start_date),
+        end_date = COALESCE(@end_date, end_date),
         is_active = COALESCE(@is_active, is_active),
+        is_prn = COALESCE(@is_prn, is_prn),
+        prn_max_daily = COALESCE(@prn_max_daily, prn_max_daily),
+        notes = COALESCE(@notes, notes),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = @id
     `)
@@ -545,12 +645,18 @@ export const MedicationRepo = {
       id,
       name: data.name ?? null,
       dosage: data.dosage ?? null,
+      dosage_unit: data.dosage_unit ?? null,
       instructions: data.instructions ?? null,
       prescriber: data.prescriber ?? null,
       pharmacy: data.pharmacy ?? null,
       rx_number: data.rx_number ?? null,
       refills_left: data.refills_left ?? null,
-      is_active: data.is_active ?? null
+      start_date: data.start_date ?? null,
+      end_date: data.end_date ?? null,
+      is_active: data.is_active ?? null,
+      is_prn: data.is_prn ?? null,
+      prn_max_daily: data.prn_max_daily ?? null,
+      notes: data.notes ?? null
     })
 
     // Update schedules if provided
@@ -560,15 +666,24 @@ export const MedicationRepo = {
 
       // Add new schedules
       const scheduleStmt = db.prepare(`
-        INSERT INTO medication_schedules (medication_id, schedule_time, days_of_week, is_active)
-        VALUES (@medication_id, @schedule_time, @days_of_week, 1)
+        INSERT INTO medication_schedules (
+          medication_id, dosage_amount, schedule_time, frequency_type,
+          days_of_week, interval_days, interval_start, is_active
+        ) VALUES (
+          @medication_id, @dosage_amount, @schedule_time, @frequency_type,
+          @days_of_week, @interval_days, @interval_start, 1
+        )
       `)
 
       for (const schedule of data.schedules) {
         scheduleStmt.run({
           medication_id: id,
+          dosage_amount: schedule.dosage_amount ?? 1,
           schedule_time: schedule.time || schedule.schedule_time,
-          days_of_week: schedule.days || schedule.days_of_week || 'daily'
+          frequency_type: schedule.frequency_type || 'daily',
+          days_of_week: schedule.days || schedule.days_of_week || 'daily',
+          interval_days: schedule.interval_days ?? null,
+          interval_start: schedule.interval_start || null
         })
       }
     }
@@ -589,14 +704,37 @@ export const MedicationRepo = {
   },
 
   /**
+   * Check if a date matches an interval schedule
+   * @param {Date} checkDate - Date to check
+   * @param {number} intervalDays - Interval in days
+   * @param {string} intervalStart - Start date (YYYY-MM-DD)
+   * @returns {boolean} True if date matches interval
+   */
+  isIntervalDay(checkDate, intervalDays, intervalStart) {
+    if (!intervalDays || !intervalStart) return false
+
+    const startDate = new Date(intervalStart)
+    const diffTime = checkDate.getTime() - startDate.getTime()
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+
+    return diffDays >= 0 && diffDays % intervalDays === 0
+  },
+
+  /**
    * Get today's medication schedule with status
+   * Handles complex scheduling: daily, specific_days, interval, prn
    * @param {number} userId - User ID
-   * @returns {Array} Today's medications with status
+   * @returns {Object} { scheduled: [...], prn: [...] }
    */
   getTodaySchedule(userId) {
     const db = getDatabase()
-    const today = new Date().toISOString().split('T')[0]
-    const dayOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()]
+    this.runMigrations()
+
+    const today = new Date()
+    const todayStr = today.toISOString().split('T')[0]
+    const dayOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][today.getDay()]
+    const now = new Date()
+    const currentTime = now.toTimeString().slice(0, 5)
 
     // Get all active medications with their schedules
     const query = `
@@ -604,38 +742,102 @@ export const MedicationRepo = {
         m.id as medication_id,
         m.name as medication_name,
         m.dosage,
+        m.dosage_unit,
         m.instructions,
+        m.is_prn,
+        m.prn_max_daily,
+        m.notes as medication_notes,
         ms.id as schedule_id,
+        ms.dosage_amount,
         ms.schedule_time,
+        ms.frequency_type,
         ms.days_of_week,
+        ms.interval_days,
+        ms.interval_start,
         ml.id as log_id,
         ml.status,
         ml.taken_at,
-        ml.notes
+        ml.notes as log_notes
       FROM medications m
-      JOIN medication_schedules ms ON m.id = ms.medication_id AND ms.is_active = 1
+      LEFT JOIN medication_schedules ms ON m.id = ms.medication_id AND ms.is_active = 1
       LEFT JOIN medication_log ml ON m.id = ml.medication_id
-        AND ml.schedule_id = ms.id
+        AND (ml.schedule_id = ms.id OR (ms.id IS NULL AND ml.schedule_id IS NULL))
         AND ml.scheduled_date = ?
       WHERE m.user_id = ?
         AND m.is_active = 1
-        AND (ms.days_of_week = 'daily' OR ms.days_of_week LIKE ?)
-      ORDER BY ms.schedule_time
+        AND (m.end_date IS NULL OR m.end_date >= ?)
+        AND (m.start_date IS NULL OR m.start_date <= ?)
+      ORDER BY ms.schedule_time NULLS LAST
     `
 
-    const rows = db.prepare(query).all(today, userId, `%${dayOfWeek}%`)
+    const rows = db.prepare(query).all(todayStr, userId, todayStr, todayStr)
 
-    // Determine status for each scheduled medication
-    const now = new Date()
-    const currentTime = now.toTimeString().slice(0, 5) // 'HH:MM'
+    const scheduled = []
+    const prn = []
+    const processedScheduleIds = new Set()
 
-    return rows.map(row => {
+    for (const row of rows) {
+      // Skip if we've already processed this schedule
+      const schedKey = `${row.medication_id}_${row.schedule_id || 'prn'}`
+      if (processedScheduleIds.has(schedKey)) continue
+      processedScheduleIds.add(schedKey)
+
+      // Handle PRN (as-needed) medications separately
+      if (row.is_prn) {
+        // Count today's PRN doses
+        const prnCount = db.prepare(`
+          SELECT COUNT(*) as count FROM medication_log
+          WHERE medication_id = ? AND scheduled_date = ? AND status = 'taken'
+        `).get(row.medication_id, todayStr)
+
+        prn.push({
+          medication_id: row.medication_id,
+          medication_name: row.medication_name,
+          dosage: row.dosage,
+          dosage_unit: row.dosage_unit,
+          instructions: row.instructions,
+          is_prn: true,
+          prn_max_daily: row.prn_max_daily,
+          doses_taken_today: prnCount?.count || 0,
+          can_take_more: !row.prn_max_daily || (prnCount?.count || 0) < row.prn_max_daily,
+          notes: row.medication_notes
+        })
+        continue
+      }
+
+      // Skip if no schedule (shouldn't happen for non-PRN)
+      if (!row.schedule_id) continue
+
+      // Determine if this schedule applies today
+      let appliesToday = false
+      const frequencyType = row.frequency_type || 'daily'
+
+      switch (frequencyType) {
+        case 'daily':
+          appliesToday = true
+          break
+
+        case 'specific_days':
+          const daysOfWeek = (row.days_of_week || 'daily').toLowerCase()
+          appliesToday = daysOfWeek === 'daily' || daysOfWeek.includes(dayOfWeek)
+          break
+
+        case 'interval':
+          appliesToday = this.isIntervalDay(today, row.interval_days, row.interval_start)
+          break
+
+        case 'prn':
+          // PRN schedules are handled separately
+          continue
+      }
+
+      if (!appliesToday) continue
+
+      // Determine status
       let status = row.status || 'pending'
-
-      // If no log entry exists and time has passed, create one as 'pending'
       if (!row.log_id && row.schedule_time < currentTime) {
-        // Check if it's more than 30 minutes late
-        const scheduledMinutes = parseInt(row.schedule_time.split(':')[0]) * 60 + parseInt(row.schedule_time.split(':')[1])
+        const scheduledMinutes = parseInt(row.schedule_time.split(':')[0]) * 60 +
+                                  parseInt(row.schedule_time.split(':')[1])
         const currentMinutes = now.getHours() * 60 + now.getMinutes()
 
         if (currentMinutes - scheduledMinutes > 30) {
@@ -643,33 +845,41 @@ export const MedicationRepo = {
         }
       }
 
-      return {
+      scheduled.push({
         medication_id: row.medication_id,
         medication_name: row.medication_name,
         dosage: row.dosage,
+        dosage_unit: row.dosage_unit,
+        dosage_amount: row.dosage_amount,
         instructions: row.instructions,
         schedule_id: row.schedule_id,
         scheduled_time: row.schedule_time,
+        frequency_type: frequencyType,
         status,
         taken_at: row.taken_at,
-        notes: row.notes
-      }
-    })
+        notes: row.log_notes || row.medication_notes
+      })
+    }
+
+    // Sort scheduled by time
+    scheduled.sort((a, b) => a.scheduled_time.localeCompare(b.scheduled_time))
+
+    return { scheduled, prn }
   },
 
   /**
    * Mark medication as taken
    * @param {number} medicationId - Medication ID
-   * @param {number|null} scheduleId - Schedule ID (optional)
-   * @param {string|null} notes - Optional notes
+   * @param {number|null} scheduleId - Schedule ID (optional, for PRN)
+   * @param {Object} options - { dosage_amount, notes }
    * @returns {Object} The log entry
    */
-  markTaken(medicationId, scheduleId = null, notes = null) {
+  markTaken(medicationId, scheduleId = null, options = {}) {
     const db = getDatabase()
     const today = new Date().toISOString().split('T')[0]
     const now = new Date().toISOString()
+    const { dosage_amount, notes } = options
 
-    // Check if log entry exists for today
     let logId
     if (scheduleId) {
       const existingLog = db.prepare(`
@@ -678,15 +888,13 @@ export const MedicationRepo = {
       `).get(medicationId, scheduleId, today)
 
       if (existingLog) {
-        // Update existing
         db.prepare(`
           UPDATE medication_log SET status = 'taken', taken_at = ?, notes = COALESCE(?, notes)
           WHERE id = ?
         `).run(now, notes, existingLog.id)
         logId = existingLog.id
       } else {
-        // Insert new
-        const schedule = db.prepare('SELECT schedule_time FROM medication_schedules WHERE id = ?').get(scheduleId)
+        const schedule = db.prepare('SELECT schedule_time, dosage_amount FROM medication_schedules WHERE id = ?').get(scheduleId)
         const result = db.prepare(`
           INSERT INTO medication_log (medication_id, schedule_id, scheduled_date, scheduled_time, status, taken_at, notes)
           VALUES (?, ?, ?, ?, 'taken', ?, ?)
@@ -694,7 +902,7 @@ export const MedicationRepo = {
         logId = result.lastInsertRowid
       }
     } else {
-      // No schedule ID, just log the take
+      // PRN medication - just log it
       const result = db.prepare(`
         INSERT INTO medication_log (medication_id, scheduled_date, status, taken_at, notes)
         VALUES (?, ?, 'taken', ?, ?)
@@ -749,6 +957,29 @@ export const MedicationRepo = {
   },
 
   /**
+   * Get medication history
+   * @param {number} medicationId - Medication ID
+   * @param {number} days - Number of days (default 30)
+   * @returns {Array} Log entries
+   */
+  getHistory(medicationId, days = 30) {
+    const db = getDatabase()
+
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - days)
+    const startDateStr = startDate.toISOString().split('T')[0]
+
+    return db.prepare(`
+      SELECT ml.*, ms.schedule_time, ms.dosage_amount
+      FROM medication_log ml
+      LEFT JOIN medication_schedules ms ON ml.schedule_id = ms.id
+      WHERE ml.medication_id = ?
+        AND ml.scheduled_date >= ?
+      ORDER BY ml.scheduled_date DESC, ml.scheduled_time DESC
+    `).all(medicationId, startDateStr)
+  },
+
+  /**
    * Get adherence statistics for past N days
    * @param {number} userId - User ID
    * @param {number} days - Number of days to look back (default 7)
@@ -756,20 +987,22 @@ export const MedicationRepo = {
    */
   getAdherenceStats(userId, days = 7) {
     const db = getDatabase()
+    this.runMigrations()
 
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days + 1)
     const startDateStr = startDate.toISOString().split('T')[0]
     const endDateStr = new Date().toISOString().split('T')[0]
 
-    // Get all logs for the period
+    // Get all logs for the period (excluding PRN)
     const logs = db.prepare(`
-      SELECT ml.*, m.name as medication_name
+      SELECT ml.*, m.name as medication_name, m.is_prn
       FROM medication_log ml
       JOIN medications m ON ml.medication_id = m.id
       WHERE m.user_id = ?
         AND ml.scheduled_date >= ?
         AND ml.scheduled_date <= ?
+        AND m.is_prn = 0
     `).all(userId, startDateStr, endDateStr)
 
     const taken = logs.filter(l => l.status === 'taken').length
@@ -794,6 +1027,16 @@ export const MedicationRepo = {
       }
     }
 
+    // Group by medication
+    const byMedication = {}
+    for (const log of logs) {
+      if (!byMedication[log.medication_name]) {
+        byMedication[log.medication_name] = { taken: 0, skipped: 0, late: 0, pending: 0, total: 0 }
+      }
+      byMedication[log.medication_name][log.status]++
+      byMedication[log.medication_name].total++
+    }
+
     return {
       period: { start: startDateStr, end: endDateStr, days },
       summary: {
@@ -808,8 +1051,259 @@ export const MedicationRepo = {
         date,
         ...stats,
         adherence_rate: stats.total > 0 ? Math.round((stats.taken / stats.total) * 100) : 100
-      })).sort((a, b) => a.date.localeCompare(b.date))
+      })).sort((a, b) => a.date.localeCompare(b.date)),
+      by_medication: Object.entries(byMedication).map(([name, stats]) => ({
+        medication_name: name,
+        ...stats,
+        adherence_rate: stats.total > 0 ? Math.round((stats.taken / stats.total) * 100) : 100
+      }))
     }
+  },
+
+  /**
+   * Get medication overview with weekly schedules
+   * Supports both old schema (frequency_type/days_of_week) and new schema (day_of_week per row)
+   * @param {number} userId - User ID
+   * @returns {Object} { medications: [...], today_summary: { scheduled_doses: [...], prn_medications: [...] } }
+   */
+  getOverview(userId) {
+    const db = getDatabase()
+    this.runMigrations()
+
+    const DAYS_OF_WEEK = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+    const today = new Date()
+    const dayOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][today.getDay()]
+
+    // Get all active medications
+    const medications = db.prepare(`
+      SELECT m.*
+      FROM medications m
+      WHERE m.user_id = ?
+        AND m.is_active = 1
+      ORDER BY m.name
+    `).all(userId)
+
+    // Build overview for each medication
+    const medicationsWithSchedules = medications.map(med => {
+      // Get schedules for this medication
+      const schedules = db.prepare(`
+        SELECT * FROM medication_schedules
+        WHERE medication_id = ? AND is_active = 1
+        ORDER BY day_of_week, schedule_time
+      `).all(med.id)
+
+      // Check if using new per-day schema (day_of_week populated)
+      const usesPerDaySchema = schedules.some(s => s.day_of_week != null)
+
+      // Build weekly schedule
+      const weeklySchedule = {
+        mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: []
+      }
+
+      if (usesPerDaySchema) {
+        // New schema: one row per day-time combination
+        for (const schedule of schedules) {
+          if (schedule.day_of_week && weeklySchedule[schedule.day_of_week]) {
+            weeklySchedule[schedule.day_of_week].push({
+              time: schedule.schedule_time,
+              dose: schedule.dosage_amount || 1,
+              schedule_id: schedule.id
+            })
+          }
+        }
+      } else {
+        // Old schema: use frequency_type and days_of_week
+        for (const schedule of schedules) {
+          const frequencyType = schedule.frequency_type || 'daily'
+
+          for (let i = 0; i < 7; i++) {
+            const dayName = DAYS_OF_WEEK[i]
+            let appliesToday = false
+
+            switch (frequencyType) {
+              case 'daily':
+                appliesToday = true
+                break
+              case 'specific_days':
+                const days = (schedule.days_of_week || 'daily').toLowerCase()
+                appliesToday = days === 'daily' || days.includes(dayName)
+                break
+              case 'interval':
+                if (schedule.interval_days === 2) {
+                  appliesToday = i % 2 === 0
+                } else {
+                  appliesToday = i % (schedule.interval_days || 1) === 0
+                }
+                break
+              case 'prn':
+                appliesToday = false
+                break
+              default:
+                appliesToday = true
+            }
+
+            if (appliesToday) {
+              weeklySchedule[dayName].push({
+                time: schedule.schedule_time,
+                dose: schedule.dosage_amount || 1,
+                schedule_id: schedule.id
+              })
+            }
+          }
+        }
+      }
+
+      // Sort each day by time
+      for (const day of DAYS_OF_WEEK) {
+        weeklySchedule[day].sort((a, b) => a.time.localeCompare(b.time))
+      }
+
+      // Determine schedule type
+      let scheduleType = 'daily'
+      if (med.is_prn) {
+        scheduleType = 'prn'
+      } else {
+        // Check if doses vary across days
+        const allDoses = DAYS_OF_WEEK.flatMap(day =>
+          weeklySchedule[day].map(s => s.dose)
+        )
+        const uniqueDosages = new Set(allDoses)
+
+        // Check if schedule varies across days
+        const dayPatterns = DAYS_OF_WEEK.map(day =>
+          weeklySchedule[day].map(s => `${s.time}:${s.dose}`).join(',')
+        )
+        const uniquePatterns = new Set(dayPatterns)
+
+        if (uniqueDosages.size > 1 || uniquePatterns.size > 1) {
+          scheduleType = 'variable'
+        }
+      }
+
+      // Generate schedule description
+      let scheduleDescription = ''
+      if (med.is_prn) {
+        scheduleDescription = `As needed${med.prn_max_daily ? ` (max ${med.prn_max_daily}/day)` : ''}`
+      } else {
+        // Analyze the schedule pattern
+        const dayPatterns = {}
+        for (const day of DAYS_OF_WEEK) {
+          const pattern = weeklySchedule[day].map(s => `${s.dose}`).join('+') || '0'
+          if (!dayPatterns[pattern]) {
+            dayPatterns[pattern] = []
+          }
+          dayPatterns[pattern].push(day)
+        }
+
+        const parts = []
+        for (const [pattern, days] of Object.entries(dayPatterns)) {
+          if (pattern === '0') continue // Skip days with no doses
+
+          let daysStr
+          if (days.length === 7) {
+            daysStr = 'daily'
+          } else if (days.join(',') === 'mon,tue,wed,thu,fri') {
+            daysStr = 'weekdays'
+          } else if (days.join(',') === 'sat,sun') {
+            daysStr = 'weekends'
+          } else {
+            daysStr = days.map(d => d.charAt(0).toUpperCase() + d.slice(1, 3)).join(', ')
+          }
+
+          const doses = pattern.split('+').map(Number)
+          const doseStr = doses.length === 1
+            ? `${doses[0]}${med.dosage_unit || ''}`
+            : `${doses.join('+')}${med.dosage_unit || ''}`
+
+          parts.push(`${doseStr} ${daysStr}`)
+        }
+
+        if (parts.length === 1 && parts[0].includes('daily')) {
+          // Get times for daily schedule
+          const times = weeklySchedule.mon.map(s => {
+            const [h, m] = s.time.split(':').map(Number)
+            const hour12 = h > 12 ? h - 12 : (h === 0 ? 12 : h)
+            const ampm = h >= 12 ? 'PM' : 'AM'
+            return `${hour12}:${m.toString().padStart(2, '0')} ${ampm}`
+          })
+          scheduleDescription = `Daily at ${times.join(', ')}`
+        } else {
+          scheduleDescription = parts.join('; ') || 'No schedule'
+        }
+      }
+
+      return {
+        id: med.id,
+        name: med.name,
+        dosage: med.dosage,
+        dosage_unit: med.dosage_unit,
+        instructions: med.instructions,
+        is_prn: !!med.is_prn,
+        prn_max_daily: med.prn_max_daily,
+        weekly_schedule: weeklySchedule,
+        schedule_type: scheduleType,
+        schedule_description: scheduleDescription,
+        schedules: schedules.map(s => ({
+          id: s.id,
+          schedule_time: s.schedule_time,
+          dosage_amount: s.dosage_amount,
+          day_of_week: s.day_of_week,
+          frequency_type: s.frequency_type,
+          days_of_week: s.days_of_week,
+          interval_days: s.interval_days,
+          interval_start: s.interval_start
+        }))
+      }
+    })
+
+    // Get today's summary using existing method
+    const todaySummary = this.getTodaySchedule(userId)
+
+    return {
+      medications: medicationsWithSchedules,
+      today_summary: {
+        date: today.toISOString().split('T')[0],
+        day_of_week: dayOfWeek,
+        scheduled_doses: todaySummary.scheduled,
+        prn_medications: todaySummary.prn
+      }
+    }
+  },
+
+  /**
+   * Update medication schedule using per-day format
+   * @param {number} medicationId - Medication ID
+   * @param {Array} schedules - Array of { time, doses: { mon, tue, wed, thu, fri, sat, sun } }
+   */
+  updateSchedulePerDay(medicationId, schedules) {
+    const db = getDatabase()
+    this.runMigrations()
+
+    const DAYS_OF_WEEK = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+
+    const transaction = db.transaction(() => {
+      // Deactivate existing schedules
+      db.prepare('UPDATE medication_schedules SET is_active = 0 WHERE medication_id = ?').run(medicationId)
+
+      // Insert new schedules (one row per day-time combination)
+      const insertStmt = db.prepare(`
+        INSERT INTO medication_schedules (medication_id, day_of_week, schedule_time, dosage_amount, is_active)
+        VALUES (?, ?, ?, ?, 1)
+      `)
+
+      for (const schedule of schedules) {
+        for (const day of DAYS_OF_WEEK) {
+          const dose = schedule.doses[day]
+          if (dose > 0) {
+            insertStmt.run(medicationId, day, schedule.time, dose)
+          }
+        }
+      }
+    })
+
+    transaction()
+
+    return { success: true }
   }
 }
 

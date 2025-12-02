@@ -48,7 +48,9 @@
       "Bash(echo:*)",
       "Bash(timeout /t 5 /nobreak)",
       "Bash(cmd /c \"taskkill /F /PID 178552\")",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(cmd /c \"taskkill /F /PID 354652\")",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

@@ -4,13 +4,13 @@ import { useState } from 'react'
 import MobileHeader from './MobileHeader'
 import MobileNav from './MobileNav'
 import MobileDashboard from '../screens/MobileDashboard'
-import MobileHealth from '../screens/MobileHealth'
-import MobileSchedule from '../screens/MobileSchedule'
-import MobileMedication from '../screens/MobileMedication'
+import Vitals from '../components/Vitals'
+import Appointments from '../components/Appointments'
+import Medication from '../components/Medication'
 import Nutrition from '../components/Nutrition'
-import MobileFitness from '../screens/MobileFitness'
-import MobileHydration from '../screens/MobileHydration'
-import MobileVideo from '../screens/MobileVideo'
+import Fitness from '../components/Fitness'
+import Hydration from '../components/Hydration'
+import VideoChat from '../components/VideoChat'
 
 const MobileLayout = () => {
   const [activeScreen, setActiveScreen] = useState('dashboard')
@@ -24,19 +24,19 @@ const MobileLayout = () => {
       case 'dashboard':
         return <MobileDashboard onNavigate={handleNavigate} />
       case 'health':
-        return <MobileHealth onNavigate={handleNavigate} />
+        return <Vitals variant="mobile" onNavigate={handleNavigate} />
       case 'schedule':
-        return <MobileSchedule onNavigate={handleNavigate} />
+        return <Appointments variant="mobile" onNavigate={handleNavigate} />
       case 'medication':
-        return <MobileMedication onNavigate={handleNavigate} />
+        return <Medication variant="mobile" onNavigate={handleNavigate} />
       case 'nutrition':
         return <Nutrition variant="mobile" onNavigate={handleNavigate} />
       case 'fitness':
-        return <MobileFitness onNavigate={handleNavigate} />
+        return <Fitness variant="mobile" onNavigate={handleNavigate} />
       case 'hydration':
-        return <MobileHydration onNavigate={handleNavigate} />
+        return <Hydration variant="mobile" onNavigate={handleNavigate} />
       case 'video':
-        return <MobileVideo onNavigate={handleNavigate} />
+        return <VideoChat variant="mobile" onNavigate={handleNavigate} />
       default:
         return <MobileDashboard onNavigate={handleNavigate} />
     }

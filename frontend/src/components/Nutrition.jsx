@@ -205,8 +205,10 @@ function Nutrition({ isCollapsed = false, variant = 'desktop', onNavigate }) {
   const loadNutritionDetails = async () => {
     try {
       setDetailsLoading(true)
-      const history = await nutritionApi.getNutritionHistory(7)
-      setNutritionHistory(history || [])
+      const response = await nutritionApi.getNutritionHistory({ days: 7 })
+      // API returns { startDate, endDate, history } - extract the history array
+      const historyData = response?.history || response?.data?.history || []
+      setNutritionHistory(Array.isArray(historyData) ? historyData : [])
     } catch (error) {
       console.error('Error loading nutrition details:', error)
       setNutritionHistory([])

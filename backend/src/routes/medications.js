@@ -32,20 +32,36 @@ router.get('/', (req, res) => {
 })
 
 /**
- * POST /api/medications - Add new medication
- * Body: { name, dosage, instructions?, prescriber?, pharmacy?, rx_number?,
- *         refills_left?, schedules: [{ time: "08:00", days: "daily" }] }
+ * POST /api/medications - Add new medication with schedules
+ * Body: {
+ *   name, dosage, dosage_unit, instructions, is_prn, prn_max_daily,
+ *   prescriber, pharmacy, rx_number, refills_left, start_date, end_date, notes,
+ *   schedules: [{
+ *     schedule_time: "08:00",
+ *     dosage_amount: 1,
+ *     frequency_type: "daily" | "specific_days" | "interval" | "prn",
+ *     days_of_week: "mon,tue,wed,thu,fri",
+ *     interval_days: 2,
+ *     interval_start: "2025-12-01"
+ *   }]
+ * }
  */
 router.post('/', (req, res) => {
   try {
     const {
       name,
       dosage,
+      dosage_unit,
       instructions,
       prescriber,
       pharmacy,
       rx_number,
       refills_left,
+      start_date,
+      end_date,
+      is_prn,
+      prn_max_daily,
+      notes,
       schedules
     } = req.body
 
@@ -61,11 +77,17 @@ router.post('/', (req, res) => {
         user_id: DEFAULT_USER_ID,
         name,
         dosage,
+        dosage_unit,
         instructions,
         prescriber,
         pharmacy,
         rx_number,
-        refills_left
+        refills_left,
+        start_date,
+        end_date,
+        is_prn: is_prn ? 1 : 0,
+        prn_max_daily,
+        notes
       },
       schedules || []
     )
@@ -87,7 +109,14 @@ router.post('/', (req, res) => {
 
 /**
  * GET /api/medications/today - Get today's medication schedule with status
- * Returns: [{ medication_name, dosage, scheduled_time, status: 'pending'|'taken'|'skipped'|'late' }]
+ * Returns: { scheduled: [...], prn: [...] }
+ *
+ * scheduled items have: medication_id, medication_name, dosage, dosage_unit,
+ *   dosage_amount, instructions, schedule_id, scheduled_time, frequency_type,
+ *   status ('pending' | 'taken' | 'skipped' | 'late'), taken_at, notes
+ *
+ * prn items have: medication_id, medication_name, dosage, dosage_unit,
+ *   instructions, is_prn, prn_max_daily, doses_taken_today, can_take_more, notes
  */
 router.get('/today', (req, res) => {
   try {
@@ -97,8 +126,7 @@ router.get('/today', (req, res) => {
     res.json({
       success: true,
       data: schedule,
-      date: new Date().toISOString().split('T')[0],
-      count: schedule.length
+      date: new Date().toISOString().split('T')[0]
     })
   } catch (error) {
     console.error('Error fetching today\'s schedule:', error)
@@ -134,6 +162,30 @@ router.get('/adherence', (req, res) => {
 })
 
 /**
+ * GET /api/medications/overview - Get medication overview with weekly schedules
+ * Query: userId
+ * Returns: { medications: [...], today_summary: { scheduled_doses: [...], prn_medications: [...] } }
+ */
+router.get('/overview', (req, res) => {
+  try {
+    const userId = parseInt(req.query.userId) || DEFAULT_USER_ID
+    const overview = MedicationRepo.getOverview(userId)
+
+    res.json({
+      success: true,
+      data: overview,
+      date: new Date().toISOString().split('T')[0]
+    })
+  } catch (error) {
+    console.error('Error fetching medication overview:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch medication overview'
+    })
+  }
+})
+
+/**
  * GET /api/medications/:id - Get medication with schedules
  */
 router.get('/:id', (req, res) => {
@@ -162,7 +214,42 @@ router.get('/:id', (req, res) => {
 })
 
 /**
- * PUT /api/medications/:id - Update medication details
+ * GET /api/medications/:id/history - Get medication log history
+ * Query: days (default 30)
+ */
+router.get('/:id/history', (req, res) => {
+  try {
+    const { id } = req.params
+    const days = parseInt(req.query.days) || 30
+
+    // Check if medication exists
+    const existing = MedicationRepo.getById(parseInt(id))
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: 'Medication not found'
+      })
+    }
+
+    const history = MedicationRepo.getHistory(parseInt(id), days)
+
+    res.json({
+      success: true,
+      data: history,
+      medication: existing,
+      days
+    })
+  } catch (error) {
+    console.error('Error fetching medication history:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch medication history'
+    })
+  }
+})
+
+/**
+ * PUT /api/medications/:id - Update medication details and schedules
  */
 router.put('/:id', (req, res) => {
   try {
@@ -170,11 +257,17 @@ router.put('/:id', (req, res) => {
     const {
       name,
       dosage,
+      dosage_unit,
       instructions,
       prescriber,
       pharmacy,
       rx_number,
       refills_left,
+      start_date,
+      end_date,
+      is_prn,
+      prn_max_daily,
+      notes,
       schedules
     } = req.body
 
@@ -190,11 +283,17 @@ router.put('/:id', (req, res) => {
     const updated = MedicationRepo.update(parseInt(id), {
       name,
       dosage,
+      dosage_unit,
       instructions,
       prescriber,
       pharmacy,
       rx_number,
       refills_left,
+      start_date,
+      end_date,
+      is_prn: is_prn !== undefined ? (is_prn ? 1 : 0) : undefined,
+      prn_max_daily,
+      notes,
       schedules
     })
 
@@ -245,12 +344,12 @@ router.delete('/:id', (req, res) => {
 
 /**
  * POST /api/medications/:id/take - Mark medication as taken
- * Body: { scheduleId?, notes? }
+ * Body: { scheduleId?, dosage_amount?, notes? }
  */
 router.post('/:id/take', (req, res) => {
   try {
     const { id } = req.params
-    const { scheduleId, notes } = req.body
+    const { scheduleId, dosage_amount, notes } = req.body
 
     // Check if medication exists
     const existing = MedicationRepo.getById(parseInt(id))
@@ -264,7 +363,7 @@ router.post('/:id/take', (req, res) => {
     const logEntry = MedicationRepo.markTaken(
       parseInt(id),
       scheduleId ? parseInt(scheduleId) : null,
-      notes
+      { dosage_amount, notes }
     )
 
     console.log('Medication marked as taken:', logEntry)
@@ -319,6 +418,73 @@ router.post('/:id/skip', (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to mark medication as skipped'
+    })
+  }
+})
+
+/**
+ * PUT /api/medications/:id/schedule - Update medication schedule (per-day format)
+ * Body: {
+ *   schedules: [
+ *     { time: "07:00", doses: { mon: 25, tue: 25, wed: 25, thu: 25, fri: 25, sat: 50, sun: 50 } },
+ *     { time: "18:00", doses: { mon: 500, tue: 500, wed: 500, ... } }
+ *   ]
+ * }
+ */
+router.put('/:id/schedule', (req, res) => {
+  try {
+    const { id } = req.params
+    const { schedules } = req.body
+
+    // Validate input
+    if (!schedules || !Array.isArray(schedules)) {
+      return res.status(400).json({
+        success: false,
+        error: 'schedules array is required'
+      })
+    }
+
+    // Validate each schedule entry
+    const DAYS_OF_WEEK = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+    for (const schedule of schedules) {
+      if (!schedule.time || !/^\d{2}:\d{2}$/.test(schedule.time)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Each schedule must have a valid time in HH:MM format'
+        })
+      }
+      if (!schedule.doses || typeof schedule.doses !== 'object') {
+        return res.status(400).json({
+          success: false,
+          error: 'Each schedule must have a doses object'
+        })
+      }
+    }
+
+    // Check if medication exists
+    const existing = MedicationRepo.getById(parseInt(id))
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: 'Medication not found'
+      })
+    }
+
+    // Update the schedule using the new per-day format
+    const result = MedicationRepo.updateSchedulePerDay(parseInt(id), schedules)
+
+    console.log('Medication schedule updated:', id)
+
+    res.json({
+      success: true,
+      message: 'Schedule updated successfully',
+      data: result
+    })
+  } catch (error) {
+    console.error('Error updating medication schedule:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update medication schedule'
     })
   }
 })

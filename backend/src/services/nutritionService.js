@@ -1,117 +1,75 @@
-import { readFileSync, writeFileSync } from 'fs'
-import { join } from 'path'
+import { getDatabase } from './database.js'
 
-// For now, we'll use JSON files as a simple database
-// This will be replaced with a proper database later
+// Default user ID (single-user mode for now)
+const DEFAULT_USER_ID = 1
 
 class NutritionService {
   constructor() {
-    this.dataPath = join(process.cwd(), 'src/data')
-    this.nutritionFilePath = join(this.dataPath, 'nutrition.json')
-    this.foodsDbPath = join(this.dataPath, 'foods-database.json')
-    this.mealsFilePath = join(this.dataPath, 'meals.json')
-
-    // Initialize meals file if it doesn't exist
-    this.initializeMealsFile()
+    // Database is initialized by the server before this service is used
   }
 
-  initializeMealsFile() {
-    try {
-      readFileSync(this.mealsFilePath)
-    } catch (error) {
-      // File doesn't exist, create it with empty array
-      const initialData = {
-        meals: [],
-        lastUpdated: new Date().toISOString()
-      }
-      writeFileSync(this.mealsFilePath, JSON.stringify(initialData, null, 2))
-    }
-  }
-
-  // Read nutrition data from JSON file
-  readNutritionData() {
-    try {
-      const data = readFileSync(this.nutritionFilePath, 'utf8')
-      return JSON.parse(data)
-    } catch (error) {
-      console.error('Error reading nutrition data:', error)
-      throw new Error('Failed to read nutrition data')
-    }
-  }
-
-  // Read foods database
-  readFoodsDatabase() {
-    try {
-      const data = readFileSync(this.foodsDbPath, 'utf8')
-      return JSON.parse(data)
-    } catch (error) {
-      console.error('Error reading foods database:', error)
-      throw new Error('Failed to read foods database')
-    }
-  }
-
-  // Read meals data
-  readMealsData() {
-    try {
-      const data = readFileSync(this.mealsFilePath, 'utf8')
-      return JSON.parse(data)
-    } catch (error) {
-      console.error('Error reading meals data:', error)
-      return { meals: [], lastUpdated: new Date().toISOString() }
-    }
-  }
-
-  // Write meals data
-  writeMealsData(data) {
-    try {
-      writeFileSync(this.mealsFilePath, JSON.stringify(data, null, 2))
-    } catch (error) {
-      console.error('Error writing meals data:', error)
-      throw new Error('Failed to save meals data')
-    }
+  // Get database instance
+  get db() {
+    return getDatabase()
   }
 
   // Get daily nutrition summary
   async getDailySummary(date = null) {
     const targetDate = date || new Date().toISOString().split('T')[0]
 
-    // For now, return the static data from nutrition.json
-    // Later this will calculate from actual meals for the date
-    const nutritionData = this.readNutritionData()
+    // Get nutrition goals
+    const goals = await this.getNutritionGoals()
 
-    // Calculate daily summary from meals if they exist for the date
-    const mealsData = this.readMealsData()
-    const todaysMeals = mealsData.meals.filter(meal =>
-      meal.date === targetDate
-    )
+    // Get meals for the target date
+    const meals = this.db.prepare(`
+      SELECT m.*,
+             COALESCE(SUM(mf.calories), 0) as totalCalories,
+             COALESCE(SUM(mf.protein), 0) as totalProtein,
+             COALESCE(SUM(mf.carbs), 0) as totalCarbs,
+             COALESCE(SUM(mf.fat), 0) as totalFat,
+             COALESCE(SUM(mf.fiber), 0) as totalFiber,
+             COALESCE(SUM(mf.sodium), 0) as totalSodium
+      FROM meals m
+      LEFT JOIN meal_foods mf ON m.id = mf.meal_id
+      WHERE m.user_id = ? AND m.meal_date = ?
+      GROUP BY m.id
+      ORDER BY m.created_at
+    `).all(DEFAULT_USER_ID, targetDate)
 
-    if (todaysMeals.length > 0) {
-      // Calculate actual nutrition from logged meals
-      return this.calculateDailySummaryFromMeals(todaysMeals, nutritionData.nutritionGoals)
-    }
+    // Get foods for each meal
+    const todaysMeals = meals.map(meal => {
+      const foods = this.db.prepare(`
+        SELECT food_name as name, quantity, unit, calories, protein, carbs, fat, fiber, sodium
+        FROM meal_foods WHERE meal_id = ?
+      `).all(meal.id)
 
-    // Return static data with today's date
-    return {
-      ...nutritionData.dailySummary,
-      date: targetDate,
-      todaysMeals: nutritionData.todaysMeals || []
-    }
-  }
+      return {
+        id: meal.id,
+        date: meal.meal_date,
+        mealType: meal.meal_type,
+        time: meal.meal_time,
+        foods,
+        totalCalories: meal.totalCalories,
+        totalProtein: meal.totalProtein,
+        totalCarbs: meal.totalCarbs,
+        totalFat: meal.totalFat,
+        totalFiber: meal.totalFiber,
+        totalSodium: meal.totalSodium,
+        createdAt: meal.created_at
+      }
+    })
 
-  // Calculate nutrition summary from actual meals
-  calculateDailySummaryFromMeals(meals, goals) {
-    const totals = meals.reduce((acc, meal) => ({
+    // Calculate totals from all meals
+    const totals = todaysMeals.reduce((acc, meal) => ({
       calories: acc.calories + (meal.totalCalories || 0),
       protein: acc.protein + (meal.totalProtein || 0),
       carbs: acc.carbs + (meal.totalCarbs || 0),
       fat: acc.fat + (meal.totalFat || 0),
       fiber: acc.fiber + (meal.totalFiber || 0),
       sodium: acc.sodium + (meal.totalSodium || 0)
-    }), {
-      calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0
-    })
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 })
 
-    // Calculate percentages and remaining values
+    // Build summary with percentages
     const summary = {}
     for (const [key, consumed] of Object.entries(totals)) {
       const target = goals[key] || 0
@@ -124,15 +82,14 @@ class NutritionService {
     }
 
     return {
-      date: meals[0]?.date || new Date().toISOString().split('T')[0],
+      date: targetDate,
       ...summary,
-      todaysMeals: meals
+      todaysMeals
     }
   }
 
   // Log a new meal
   async logMeal(mealType, foods) {
-    const mealsData = this.readMealsData()
     const currentDate = new Date().toISOString().split('T')[0]
     const currentTime = new Date().toLocaleTimeString('en-US', {
       hour: 'numeric',
@@ -140,20 +97,62 @@ class NutritionService {
       hour12: true
     })
 
-    // Calculate meal totals
-    const totals = foods.reduce((acc, food) => ({
-      calories: acc.calories + (food.calories || 0),
-      protein: acc.protein + (food.protein || 0),
-      carbs: acc.carbs + (food.carbs || 0),
-      fat: acc.fat + (food.fat || 0),
-      fiber: acc.fiber + (food.fiber || 0),
-      sodium: acc.sodium + (food.sodium || 0)
-    }), {
-      calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0
-    })
+    // Insert meal
+    const insertMeal = this.db.prepare(`
+      INSERT INTO meals (user_id, meal_date, meal_type, meal_time)
+      VALUES (?, ?, ?, ?)
+    `)
+    const mealResult = insertMeal.run(DEFAULT_USER_ID, currentDate, mealType.toLowerCase(), currentTime)
+    const mealId = mealResult.lastInsertRowid
 
-    const newMeal = {
-      id: Date.now(), // Simple ID generation
+    // Insert meal foods
+    const insertFood = this.db.prepare(`
+      INSERT INTO meal_foods (meal_id, food_id, food_name, quantity, unit, calories, protein, carbs, fat, fiber, sodium)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+
+    let totals = { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 }
+
+    for (const food of foods) {
+      // Try to find food in database
+      const dbFood = this.db.prepare('SELECT id FROM foods WHERE LOWER(name) = LOWER(?)').get(food.name)
+
+      insertFood.run(
+        mealId,
+        dbFood?.id || null,
+        food.name,
+        food.quantity || 1,
+        food.unit || 'serving',
+        food.calories || 0,
+        food.protein || 0,
+        food.carbs || 0,
+        food.fat || 0,
+        food.fiber || 0,
+        food.sodium || 0
+      )
+
+      // Update recent foods tracking
+      if (dbFood) {
+        this.db.prepare(`
+          INSERT INTO recent_foods (user_id, food_id, use_count, last_used)
+          VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+          ON CONFLICT(user_id, food_id) DO UPDATE SET
+            use_count = use_count + 1,
+            last_used = CURRENT_TIMESTAMP
+        `).run(DEFAULT_USER_ID, dbFood.id)
+      }
+
+      // Accumulate totals
+      totals.calories += food.calories || 0
+      totals.protein += food.protein || 0
+      totals.carbs += food.carbs || 0
+      totals.fat += food.fat || 0
+      totals.fiber += food.fiber || 0
+      totals.sodium += food.sodium || 0
+    }
+
+    return {
+      id: Number(mealId),
       date: currentDate,
       mealType: mealType.toLowerCase(),
       time: currentTime,
@@ -166,149 +165,164 @@ class NutritionService {
       totalSodium: totals.sodium,
       createdAt: new Date().toISOString()
     }
-
-    mealsData.meals.push(newMeal)
-    mealsData.lastUpdated = new Date().toISOString()
-
-    this.writeMealsData(mealsData)
-
-    return newMeal
   }
 
   // Search foods in database
   async searchFoods(query, limit = 20) {
-    const foodsDb = this.readFoodsDatabase()
-    const searchTerm = query.toLowerCase()
+    const searchTerm = `%${query.toLowerCase()}%`
 
-    const matchedFoods = foodsDb.foods.filter(food =>
-      food.name.toLowerCase().includes(searchTerm) ||
-      food.category?.toLowerCase().includes(searchTerm)
-    ).slice(0, limit)
+    const foods = this.db.prepare(`
+      SELECT id, name, category, calories, protein, carbs, fat, fiber, sodium, serving_unit as unit
+      FROM foods
+      WHERE LOWER(name) LIKE ? OR LOWER(category) LIKE ?
+      LIMIT ?
+    `).all(searchTerm, searchTerm, limit)
 
-    return matchedFoods
+    return foods
   }
 
   // Get nutrition goals
   async getNutritionGoals() {
-    const nutritionData = this.readNutritionData()
-    return nutritionData.nutritionGoals
+    const goals = this.db.prepare(`
+      SELECT calories, protein, carbs, fat, fiber, sodium
+      FROM nutrition_goals
+      WHERE user_id = ?
+      ORDER BY effective_date DESC
+      LIMIT 1
+    `).get(DEFAULT_USER_ID)
+
+    // Return defaults if no goals found
+    return goals || {
+      calories: 2000,
+      protein: 100,
+      carbs: 250,
+      fat: 65,
+      fiber: 25,
+      sodium: 2300
+    }
   }
 
   // Update nutrition goals
   async updateNutritionGoals(newGoals) {
-    const nutritionData = this.readNutritionData()
+    const currentGoals = await this.getNutritionGoals()
 
-    // Update goals while preserving existing values for missing fields
-    nutritionData.nutritionGoals = {
-      ...nutritionData.nutritionGoals,
+    const updatedGoals = {
+      ...currentGoals,
       ...Object.fromEntries(
         Object.entries(newGoals).filter(([_, value]) => value !== undefined)
       )
     }
 
-    // Save back to file (for now - later this will use a proper database)
-    writeFileSync(this.nutritionFilePath, JSON.stringify(nutritionData, null, 2))
+    // Upsert goals for today
+    this.db.prepare(`
+      INSERT INTO nutrition_goals (user_id, calories, protein, carbs, fat, fiber, sodium, effective_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, date('now'))
+      ON CONFLICT(user_id, effective_date) DO UPDATE SET
+        calories = excluded.calories,
+        protein = excluded.protein,
+        carbs = excluded.carbs,
+        fat = excluded.fat,
+        fiber = excluded.fiber,
+        sodium = excluded.sodium
+    `).run(
+      DEFAULT_USER_ID,
+      updatedGoals.calories,
+      updatedGoals.protein,
+      updatedGoals.carbs,
+      updatedGoals.fat,
+      updatedGoals.fiber,
+      updatedGoals.sodium
+    )
 
-    return nutritionData.nutritionGoals
+    return updatedGoals
   }
 
   // Get nutrition history for date range
   async getNutritionHistory({ startDate, endDate, days = 7 }) {
-    const mealsData = this.readMealsData()
-
     let filterStartDate, filterEndDate
 
     if (startDate && endDate) {
       filterStartDate = startDate
       filterEndDate = endDate
     } else {
-      // Default to last N days
       const end = new Date()
       const start = new Date()
       start.setDate(start.getDate() - days + 1)
-
       filterStartDate = start.toISOString().split('T')[0]
       filterEndDate = end.toISOString().split('T')[0]
     }
 
-    // Filter meals by date range
-    const filteredMeals = mealsData.meals.filter(meal =>
-      meal.date >= filterStartDate && meal.date <= filterEndDate
-    )
+    // Use the v_daily_nutrition view
+    const dailyData = this.db.prepare(`
+      SELECT meal_date as date, total_calories, total_protein, total_carbs, total_fat, total_fiber, total_sodium, meal_count
+      FROM v_daily_nutrition
+      WHERE user_id = ? AND meal_date BETWEEN ? AND ?
+      ORDER BY meal_date DESC
+    `).all(DEFAULT_USER_ID, filterStartDate, filterEndDate)
 
-    // Group by date and calculate daily summaries
-    const dailySummaries = {}
     const goals = await this.getNutritionGoals()
 
-    filteredMeals.forEach(meal => {
-      if (!dailySummaries[meal.date]) {
-        dailySummaries[meal.date] = []
+    // Format history entries to match original API response
+    const history = dailyData.map(day => {
+      const summary = {}
+      const nutrientMap = {
+        total_calories: 'calories',
+        total_protein: 'protein',
+        total_carbs: 'carbs',
+        total_fat: 'fat',
+        total_fiber: 'fiber',
+        total_sodium: 'sodium'
       }
-      dailySummaries[meal.date].push(meal)
-    })
 
-    const history = Object.entries(dailySummaries).map(([date, meals]) =>
-      this.calculateDailySummaryFromMeals(meals, goals)
-    )
+      for (const [dbKey, apiKey] of Object.entries(nutrientMap)) {
+        const consumed = day[dbKey] || 0
+        const target = goals[apiKey] || 0
+        summary[apiKey] = {
+          consumed: Math.round(consumed),
+          target,
+          remaining: Math.max(0, target - consumed),
+          percentage: target > 0 ? Math.round((consumed / target) * 100) : 0
+        }
+      }
+
+      return {
+        date: day.date,
+        ...summary
+      }
+    })
 
     return {
       startDate: filterStartDate,
       endDate: filterEndDate,
-      history: history.sort((a, b) => new Date(b.date) - new Date(a.date))
+      history
     }
   }
 
   // Delete a meal
   async deleteMeal(mealId) {
-    const mealsData = this.readMealsData()
-    const mealIndex = mealsData.meals.findIndex(meal => meal.id == mealId)
+    // meal_foods will be deleted via CASCADE
+    const result = this.db.prepare('DELETE FROM meals WHERE id = ? AND user_id = ?')
+      .run(mealId, DEFAULT_USER_ID)
 
-    if (mealIndex === -1) {
+    if (result.changes === 0) {
       throw new Error('Meal not found')
     }
-
-    mealsData.meals.splice(mealIndex, 1)
-    mealsData.lastUpdated = new Date().toISOString()
-
-    this.writeMealsData(mealsData)
   }
 
   // Get recently used foods
   async getRecentFoods(limit = 10) {
-    const mealsData = this.readMealsData()
+    const recentFoods = this.db.prepare(`
+      SELECT f.id, f.name, f.category, f.calories, f.protein, f.carbs, f.fat, f.fiber, f.sodium, f.serving_unit as unit,
+             rf.use_count, rf.last_used
+      FROM recent_foods rf
+      JOIN foods f ON rf.food_id = f.id
+      WHERE rf.user_id = ?
+      ORDER BY rf.use_count DESC, rf.last_used DESC
+      LIMIT ?
+    `).all(DEFAULT_USER_ID, limit)
 
-    // Extract all foods from recent meals and count usage
-    const foodUsage = {}
-
-    // Look at last 30 days of meals
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    const cutoffDate = thirtyDaysAgo.toISOString().split('T')[0]
-
-    mealsData.meals
-      .filter(meal => meal.date >= cutoffDate)
-      .forEach(meal => {
-        meal.foods.forEach(food => {
-          const foodKey = food.name.toLowerCase()
-          if (!foodUsage[foodKey]) {
-            foodUsage[foodKey] = { food, count: 0, lastUsed: meal.date }
-          }
-          foodUsage[foodKey].count++
-          if (meal.date > foodUsage[foodKey].lastUsed) {
-            foodUsage[foodKey].lastUsed = meal.date
-          }
-        })
-      })
-
-    // Sort by usage count and recency, return top foods
-    return Object.values(foodUsage)
-      .sort((a, b) => {
-        // First by count, then by recency
-        if (b.count !== a.count) return b.count - a.count
-        return new Date(b.lastUsed) - new Date(a.lastUsed)
-      })
-      .slice(0, limit)
-      .map(item => item.food)
+    // Return just the food objects without the tracking metadata
+    return recentFoods.map(({ use_count, last_used, ...food }) => food)
   }
 }
 

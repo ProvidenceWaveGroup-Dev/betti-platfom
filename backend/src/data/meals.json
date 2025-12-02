@@ -337,7 +337,156 @@
       "totalFiber": 4,
       "totalSodium": 0,
       "createdAt": "2025-11-20T21:34:17.792Z"
+    },
+    {
+      "id": 1764625302246,
+      "date": "2025-12-01",
+      "mealType": "lunch",
+      "time": "1:41 PM",
+      "foods": [
+        {
+          "name": "Apple",
+          "calories": 95,
+          "protein": 0.5,
+          "carbs": 25,
+          "fat": 0.3,
+          "fiber": 4
+        }
+      ],
+      "totalCalories": 95,
+      "totalProtein": 0.5,
+      "totalCarbs": 25,
+      "totalFat": 0.3,
+      "totalFiber": 4,
+      "totalSodium": 0,
+      "createdAt": "2025-12-01T21:41:42.246Z"
+    },
+    {
+      "id": 1764625401126,
+      "date": "2025-12-01",
+      "mealType": "breakfast",
+      "time": "1:43 PM",
+      "foods": [
+        {
+          "name": "Banana",
+          "category": "fruit",
+          "calories": 105,
+          "protein": 1.3,
+          "carbs": 27,
+          "fat": 0.4,
+          "fiber": 3,
+          "unit": "medium",
+          "quantity": 1
+        }
+      ],
+      "totalCalories": 105,
+      "totalProtein": 1.3,
+      "totalCarbs": 27,
+      "totalFat": 0.4,
+      "totalFiber": 3,
+      "totalSodium": 0,
+      "createdAt": "2025-12-01T21:43:21.126Z"
+    },
+    {
+      "id": 1764625425093,
+      "date": "2025-12-01",
+      "mealType": "breakfast",
+      "time": "1:43 PM",
+      "foods": [
+        {
+          "name": "Banana",
+          "category": "fruit",
+          "calories": 105,
+          "protein": 1.3,
+          "carbs": 27,
+          "fat": 0.4,
+          "fiber": 3,
+          "unit": "medium",
+          "quantity": 1
+        }
+      ],
+      "totalCalories": 105,
+      "totalProtein": 1.3,
+      "totalCarbs": 27,
+      "totalFat": 0.4,
+      "totalFiber": 3,
+      "totalSodium": 0,
+      "createdAt": "2025-12-01T21:43:45.093Z"
+    },
+    {
+      "id": 1764695528253,
+      "date": "2025-12-02",
+      "mealType": "breakfast",
+      "time": "9:12 AM",
+      "foods": [
+        {
+          "name": "Oatmeal",
+          "category": "grain",
+          "calories": 150,
+          "protein": 5,
+          "carbs": 27,
+          "fat": 3,
+          "fiber": 4,
+          "unit": "cup",
+          "quantity": 1
+        }
+      ],
+      "totalCalories": 150,
+      "totalProtein": 5,
+      "totalCarbs": 27,
+      "totalFat": 3,
+      "totalFiber": 4,
+      "totalSodium": 0,
+      "createdAt": "2025-12-02T17:12:08.253Z"
+    },
+    {
+      "id": 1764695708582,
+      "date": "2025-12-02",
+      "mealType": "lunch",
+      "time": "9:15 AM",
+      "foods": [
+        {
+          "name": "Grilled Chicken Breast",
+          "quantity": 1,
+          "unit": "serving",
+          "calories": 165,
+          "protein": 31,
+          "carbs": 0,
+          "fat": 4
+        }
+      ],
+      "totalCalories": 165,
+      "totalProtein": 31,
+      "totalCarbs": 0,
+      "totalFat": 4,
+      "totalFiber": 0,
+      "totalSodium": 0,
+      "createdAt": "2025-12-02T17:15:08.582Z"
+    },
+    {
+      "id": 1764696275284,
+      "date": "2025-12-02",
+      "mealType": "lunch",
+      "time": "9:24 AM",
+      "foods": [
+        {
+          "name": "Apple",
+          "quantity": 1,
+          "unit": "medium",
+          "calories": 95,
+          "protein": 1,
+          "carbs": 25,
+          "fat": 0
+        }
+      ],
+      "totalCalories": 95,
+      "totalProtein": 1,
+      "totalCarbs": 25,
+      "totalFat": 0,
+      "totalFiber": 0,
+      "totalSodium": 0,
+      "createdAt": "2025-12-02T17:24:35.284Z"
     }
   ],
-  "lastUpdated": "2025-11-20T21:34:17.792Z"
+  "lastUpdated": "2025-12-02T17:24:35.284Z"
 }

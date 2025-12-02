@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import './Hydration.css'
+import '../styles/mobileHydration.scss'
 
-function Hydration({ isCollapsed = false }) {
+function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
   // Sip-based hydration tracking
   const [sipCounts, setSipCounts] = useState({ sips: 0, bigSips: 0 })
   const [todayIntake, setTodayIntake] = useState(0) // in fl oz
   const [lastSipTime, setLastSipTime] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  const isMobile = variant === 'mobile'
 
   // Sip size estimates (in fl oz)
   const SIP_SIZE = 0.5    // Regular sip: ~0.5 fl oz
@@ -14,16 +18,35 @@ function Hydration({ isCollapsed = false }) {
 
   // Load today's data from localStorage
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0]
-    const savedData = localStorage.getItem(`hydration_${today}`)
-
-    if (savedData) {
-      const data = JSON.parse(savedData)
-      setSipCounts(data.sipCounts || { sips: 0, bigSips: 0 })
-      setTodayIntake(data.todayIntake || 0)
-      setLastSipTime(data.lastSipTime)
-    }
+    loadHydrationData()
   }, [])
+
+  const loadHydrationData = () => {
+    try {
+      setLoading(true)
+      const today = new Date().toISOString().split('T')[0]
+      const savedData = localStorage.getItem(`hydration_${today}`)
+
+      if (savedData) {
+        const data = JSON.parse(savedData)
+        setSipCounts(data.sipCounts || { sips: 0, bigSips: 0 })
+        setTodayIntake(data.todayIntake || 0)
+        setLastSipTime(data.lastSipTime)
+      } else {
+        // Initialize with default values
+        setSipCounts({ sips: 0, bigSips: 0 })
+        setTodayIntake(0)
+        setLastSipTime(null)
+      }
+    } catch (error) {
+      console.error('Error loading hydration data:', error)
+      setSipCounts({ sips: 0, bigSips: 0 })
+      setTodayIntake(0)
+      setLastSipTime(null)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Save data to localStorage
   const saveData = (newSipCounts, newIntake, timestamp) => {
@@ -52,6 +75,11 @@ function Hydration({ isCollapsed = false }) {
     setTodayIntake(newIntake)
     setLastSipTime(timestamp)
     saveData(newSipCounts, newIntake, timestamp)
+
+    // Mobile haptic feedback
+    if (isMobile && navigator.vibrate) {
+      navigator.vibrate(isBigSip ? [30, 20, 30] : [30])
+    }
   }
 
   // Calculate progress
@@ -71,7 +99,20 @@ function Hydration({ isCollapsed = false }) {
     return `${diffHours}h ago`
   }
 
-  if (isCollapsed) {
+  const getStatusClass = (pct) => {
+    if (pct >= 100) return 'status-success'
+    if (pct >= 50) return 'status-normal'
+    return 'status-warning'
+  }
+
+  const getStatusText = (pct) => {
+    if (pct >= 100) return 'Goal Reached!'
+    if (pct >= 50) return 'On Track'
+    return 'Needs Attention'
+  }
+
+  // Collapsed desktop view
+  if (isCollapsed && !isMobile) {
     return (
       <div className="hydration-mini">
         <div className="mini-header">
@@ -97,13 +138,153 @@ function Hydration({ isCollapsed = false }) {
     )
   }
 
+  // Mobile loading state
+  if (loading && isMobile) {
+    return (
+      <div className="mobile-hydration">
+        <h2>Hydration Tracker</h2>
+        <div className="loading-state">
+          <span>Loading hydration data...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="mobile-hydration">
+        <h2>Hydration Tracker</h2>
+
+        {/* Status Overview */}
+        <section className="hydration-overview">
+          <div className={`status-badge ${getStatusClass(percentage)}`}>
+            <div className="status-icon">💧</div>
+            <div className="status-text">{getStatusText(percentage)}</div>
+          </div>
+        </section>
+
+        {/* Main Water Tracking */}
+        <section className="water-tracking">
+          <div className="water-visual">
+            <div className="water-glass">
+              <div
+                className="water-level"
+                style={{ height: `${percentage}%` }}
+              ></div>
+              <div className="glass-outline"></div>
+              <div className="water-percentage">{percentage}%</div>
+            </div>
+          </div>
+
+          <div className="hydration-stats">
+            <div className="main-stats">
+              <div className="consumed-amount">
+                <span className="amount-number">{Math.round(todayIntake)}</span>
+                <span className="amount-separator">/</span>
+                <span className="amount-target">{DAILY_TARGET}</span>
+                <span className="amount-unit">fl oz</span>
+              </div>
+              <div className="remaining-amount">
+                {remainingOz > 0 ? `${Math.round(remainingOz)} fl oz remaining` : 'Goal achieved!'}
+              </div>
+            </div>
+
+            <div className="progress-bar-container">
+              <div className="progress-bar">
+                <div
+                  className="progress-fill"
+                  style={{ width: `${percentage}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Sip Buttons */}
+        <section className="sip-actions">
+          <h3>Quick Tracking</h3>
+          <div className="sip-buttons">
+            <button
+              className="sip-button regular-sip"
+              onClick={() => addSip(false)}
+            >
+              <div className="sip-icon">💧</div>
+              <div className="sip-content">
+                <div className="sip-label">Regular Sip</div>
+                <div className="sip-size">{SIP_SIZE} fl oz</div>
+              </div>
+            </button>
+            <button
+              className="sip-button big-sip"
+              onClick={() => addSip(true)}
+            >
+              <div className="sip-icon">💦</div>
+              <div className="sip-content">
+                <div className="sip-label">Big Sip</div>
+                <div className="sip-size">{BIG_SIP_SIZE} fl oz</div>
+              </div>
+            </button>
+          </div>
+        </section>
+
+        {/* Today's Summary */}
+        <section className="todays-summary">
+          <h3>Today's Summary</h3>
+          <div className="summary-grid">
+            <div className="summary-item">
+              <div className="summary-icon">🥛</div>
+              <div className="summary-content">
+                <div className="summary-value">{sipCounts.sips}</div>
+                <div className="summary-label">Regular Sips</div>
+              </div>
+            </div>
+            <div className="summary-item">
+              <div className="summary-icon">💦</div>
+              <div className="summary-content">
+                <div className="summary-value">{sipCounts.bigSips}</div>
+                <div className="summary-label">Big Sips</div>
+              </div>
+            </div>
+            <div className="summary-item">
+              <div className="summary-icon">📊</div>
+              <div className="summary-content">
+                <div className="summary-value">{totalSips}</div>
+                <div className="summary-label">Total Sips</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Additional Details */}
+        <section className="hydration-details">
+          <div className="detail-row">
+            <div className="detail-item">
+              <span className="detail-icon">⏰</span>
+              <span className="detail-label">Last Sip</span>
+              <span className="detail-value">{formatLastSip(lastSipTime)}</span>
+            </div>
+          </div>
+          <div className="detail-row">
+            <div className="detail-item">
+              <span className="detail-icon">🎯</span>
+              <span className="detail-label">Average per Sip</span>
+              <span className="detail-value">{totalSips > 0 ? (todayIntake / totalSips).toFixed(1) : '0'} fl oz</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  // Desktop full layout
   return (
     <div className="hydration-card">
       <div className="card-header">
         <h3 className="card-title">💧 Daily Hydration</h3>
-        <div className={`status-indicator ${percentage >= 100 ? 'status-success' : percentage >= 50 ? 'status-normal' : 'status-warning'}`}>
+        <div className={`status-indicator ${getStatusClass(percentage)}`}>
           <span className="status-dot"></span>
-          <span>{percentage >= 100 ? 'Goal Reached!' : percentage >= 50 ? 'On Track' : 'Needs Attention'}</span>
+          <span>{getStatusText(percentage)}</span>
         </div>
       </div>
 

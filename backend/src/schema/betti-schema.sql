@@ -151,26 +151,47 @@ CREATE TABLE IF NOT EXISTS medications (
     user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
     dosage          TEXT,           -- '10mg', '2 tablets', etc.
-    instructions    TEXT,           -- 'Take with food'
+    dosage_unit     TEXT DEFAULT 'tablet',  -- mg, mcg, ml, tablet, capsule, etc.
+    instructions    TEXT,           -- 'Take with food', 'Take on empty stomach'
     prescriber      TEXT,
     pharmacy        TEXT,
     rx_number       TEXT,
     refills_left    INTEGER,
+    start_date      DATE,
+    end_date        DATE,           -- NULL if ongoing
     is_active       INTEGER DEFAULT 1,
+    is_prn          INTEGER DEFAULT 0,  -- 1 = "as needed" medication
+    prn_max_daily   INTEGER,        -- Max doses per day if PRN
+    notes           TEXT,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_medications_user ON medications(user_id, is_active);
 
--- Medication schedule (when to take each med)
+-- Medication schedules with variable dosing support
 CREATE TABLE IF NOT EXISTS medication_schedules (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     medication_id   INTEGER NOT NULL REFERENCES medications(id) ON DELETE CASCADE,
-    schedule_time   TEXT NOT NULL,  -- '08:00', '20:00' (24hr format)
-    days_of_week    TEXT DEFAULT 'daily',  -- 'daily', 'mon,wed,fri', etc.
-    is_active       INTEGER DEFAULT 1
+    dosage_amount   REAL DEFAULT 1,         -- e.g., 25, 50, 1.5
+    schedule_time   TEXT NOT NULL,          -- '08:00' (24hr format)
+
+    -- Frequency type determines which fields are used
+    frequency_type  TEXT NOT NULL DEFAULT 'daily',
+    -- Options: 'daily', 'specific_days', 'interval', 'prn'
+
+    -- For 'specific_days': comma-separated days
+    days_of_week    TEXT DEFAULT 'daily',   -- 'mon,tue,wed,thu,fri' or 'sat,sun'
+
+    -- For 'interval': every N days
+    interval_days   INTEGER,                -- e.g., 2 = every other day
+    interval_start  DATE,                   -- Reference date for interval calculation
+
+    is_active       INTEGER DEFAULT 1,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_med_schedules_med ON medication_schedules(medication_id, is_active);
 
 -- Medication adherence log
 CREATE TABLE IF NOT EXISTS medication_log (
@@ -432,16 +453,25 @@ SELECT
 FROM hydration_log
 GROUP BY user_id, date(recorded_at);
 
--- Pending medications for today
+-- Pending medications for today (with complex schedule support)
 CREATE VIEW IF NOT EXISTS v_pending_medications AS
-SELECT 
+SELECT
     ml.id,
     ml.medication_id,
     m.user_id,
     m.name as medication_name,
     m.dosage,
+    m.dosage_unit,
     m.instructions,
+    m.is_prn,
+    m.prn_max_daily,
+    ms.id as schedule_id,
     ms.schedule_time,
+    ms.dosage_amount,
+    ms.frequency_type,
+    ms.days_of_week,
+    ms.interval_days,
+    ms.interval_start,
     ml.scheduled_date,
     ml.status
 FROM medication_log ml

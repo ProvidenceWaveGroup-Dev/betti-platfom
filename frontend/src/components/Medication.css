@@ -239,3 +239,1548 @@
 .med-button.taken {
   animation: checkmark 0.3s ease;
 }
+
+/* =========================================================================
+   DESKTOP ADDITIONAL STYLES
+   ========================================================================= */
+
+.med-dosage {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* PRN Section (Desktop) */
+.prn-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(74, 158, 255, 0.2);
+}
+
+.prn-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.prn-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.prn-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prn-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+.prn-dosage {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.prn-limit {
+  font-size: 11px;
+  color: #8b5cf6;
+}
+
+.prn-button {
+  padding: 8px 16px;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 6px;
+  color: #8b5cf6;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.prn-button:hover:not(.disabled) {
+  background: rgba(139, 92, 246, 0.3);
+  border-color: #8b5cf6;
+}
+
+.prn-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Desktop Action Buttons */
+.medication-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(74, 158, 255, 0.1);
+}
+
+.action-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.action-button.primary {
+  background: linear-gradient(135deg, #4a9eff 0%, #00d4ff 100%);
+  color: white;
+}
+
+.action-button.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
+}
+
+.action-button.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  color: var(--text-light);
+}
+
+.action-button.secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(74, 158, 255, 0.5);
+}
+
+.button-icon {
+  font-size: 16px;
+}
+
+/* =========================================================================
+   MODAL STYLES
+   ========================================================================= */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.medication-modal {
+  background: linear-gradient(180deg, rgba(30, 30, 45, 0.98) 0%, rgba(20, 20, 30, 0.98) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  width: 100%;
+  max-width: 500px;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+/* Ensure modal body can scroll */
+.medication-modal > .modal-step {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.medication-modal.details-modal,
+.medication-modal.history-modal {
+  max-width: 600px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.2);
+  background: rgba(74, 158, 255, 0.05);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+.close-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  background: rgba(255, 100, 100, 0.2);
+  color: #ff6b6b;
+}
+
+/* Modal Navigation Tabs */
+.modal-nav {
+  display: flex;
+  padding: 0 24px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(74, 158, 255, 0.1);
+}
+
+.nav-button {
+  flex: 1;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.nav-button:hover {
+  color: var(--text-light);
+}
+
+.nav-button.active {
+  color: #4a9eff;
+}
+
+.nav-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #4a9eff, #00d4ff);
+}
+
+.modal-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* =========================================================================
+   FORM STYLES
+   ========================================================================= */
+
+.modal-step {
+  padding: 24px;
+}
+
+.modal-step h3 {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.form-group.checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--text-light);
+}
+
+.form-group.checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #4a9eff;
+  cursor: pointer;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group input[type="time"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  border-radius: 8px;
+  color: var(--text-light);
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #4a9eff;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.1);
+}
+
+.form-group input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.form-group select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234a9eff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+/* Schedule Entry Styles */
+.schedule-entry {
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(74, 158, 255, 0.15);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.schedule-entry .form-group {
+  margin-bottom: 16px;
+}
+
+.schedule-entry .form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Day Checkboxes */
+.day-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.day-checkbox {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  color: var(--text-muted) !important;
+}
+
+.day-checkbox:hover {
+  border-color: rgba(74, 158, 255, 0.4);
+  background: rgba(74, 158, 255, 0.05);
+}
+
+.day-checkbox input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #4a9eff;
+}
+
+.day-checkbox:has(input:checked) {
+  background: rgba(74, 158, 255, 0.15);
+  border-color: #4a9eff;
+  color: var(--text-light) !important;
+}
+
+/* Schedule Management Buttons */
+.remove-schedule-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px;
+  background: rgba(255, 100, 100, 0.1);
+  border: 1px solid rgba(255, 100, 100, 0.3);
+  border-radius: 6px;
+  color: #ff6b6b;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.remove-schedule-btn:hover {
+  background: rgba(255, 100, 100, 0.2);
+}
+
+.add-schedule-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: rgba(74, 158, 255, 0.1);
+  border: 1px dashed rgba(74, 158, 255, 0.4);
+  border-radius: 8px;
+  color: #4a9eff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-schedule-btn:hover {
+  background: rgba(74, 158, 255, 0.15);
+  border-color: #4a9eff;
+}
+
+/* Modal Action Buttons */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(74, 158, 255, 0.1);
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  flex: 1;
+  padding: 14px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #4a9eff 0%, #00d4ff 100%);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(74, 158, 255, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-light);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-danger {
+  background: rgba(255, 100, 100, 0.1);
+  border: 1px solid rgba(255, 100, 100, 0.4);
+  color: #ff6b6b;
+}
+
+.btn-danger:hover {
+  background: rgba(255, 100, 100, 0.2);
+  border-color: #ff6b6b;
+}
+
+/* =========================================================================
+   REVIEW SUMMARY STYLES
+   ========================================================================= */
+
+.review-summary {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.review-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.review-item:last-child {
+  border-bottom: none;
+}
+
+.review-label {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.review-value {
+  color: var(--text-light);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: right;
+}
+
+.review-value div {
+  margin-bottom: 4px;
+}
+
+.review-value div:last-child {
+  margin-bottom: 0;
+}
+
+/* =========================================================================
+   DETAILS MODAL - TODAY VIEW
+   ========================================================================= */
+
+.today-view {
+  padding: 20px 0;
+}
+
+.stats-summary {
+  display: flex;
+  justify-content: space-around;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-item.late .stat-value {
+  color: #ff6b6b;
+}
+
+/* =========================================================================
+   DETAILS MODAL - ALL MEDS VIEW
+   ========================================================================= */
+
+.all-meds-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.all-med-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.all-med-item:hover {
+  background: rgba(74, 158, 255, 0.1);
+  transform: translateX(4px);
+}
+
+.all-med-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.all-med-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+.all-med-dosage {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.prn-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(139, 92, 246, 0.2);
+  border-radius: 4px;
+  font-size: 10px;
+  color: #8b5cf6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+.view-history-arrow {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* =========================================================================
+   DETAILS MODAL - ADHERENCE VIEW
+   ========================================================================= */
+
+.adherence-view {
+  padding: 10px 0;
+}
+
+.adherence-summary {
+  text-align: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.adherence-rate {
+  margin-bottom: 20px;
+}
+
+.rate-value {
+  font-size: 48px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #4a9eff 0%, #00d4ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.rate-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.adherence-breakdown {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+}
+
+.breakdown-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.breakdown-count {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+.breakdown-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Daily Adherence Chart */
+.adherence-by-day h4 {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.day-adherence {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.day-date {
+  width: 100px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.day-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.day-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a9eff, #00d4ff);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.day-rate {
+  width: 40px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-light);
+  text-align: right;
+}
+
+/* =========================================================================
+   HISTORY MODAL
+   ========================================================================= */
+
+.medication-details {
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.medication-details p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.medication-details p:last-child {
+  margin-bottom: 0;
+}
+
+.medication-details strong {
+  color: var(--text-light);
+}
+
+.history-list {
+  margin-top: 20px;
+}
+
+.history-list h4 {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.empty-history {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.history-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border-left: 3px solid var(--text-muted);
+}
+
+.history-entry.taken {
+  border-left-color: #22c55e;
+}
+
+.history-entry.skipped {
+  border-left-color: #f59e0b;
+}
+
+.history-entry.late {
+  border-left-color: #ef4444;
+}
+
+.history-date {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.history-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.history-status.taken {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.history-status.skipped {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.history-status.late {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.history-status.pending {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}
+
+/* ============================================
+   MEDICATION OVERVIEW PANEL STYLES
+   ============================================ */
+
+.medication-modal.overview-modal {
+  max-width: 800px;
+}
+
+/* Daily Summary */
+.daily-summary {
+  margin-top: 24px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+}
+
+.daily-summary h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+.summary-stat {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-list.compact {
+  gap: 4px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.summary-time {
+  font-weight: 600;
+  color: #4a9eff;
+  min-width: 70px;
+}
+
+.summary-med {
+  flex: 1;
+  color: var(--text-light);
+}
+
+.summary-dose {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.summary-prn {
+  font-size: 12px;
+  color: #f59e0b;
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* Overview View */
+.overview-view {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.overview-medication {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  border-left: 4px solid #4a9eff;
+}
+
+.overview-medication.variable {
+  border-left-color: #f59e0b;
+}
+
+.overview-medication.prn {
+  border-left-color: #8b5cf6;
+}
+
+.overview-med-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.overview-med-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.overview-med-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+.med-type-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(74, 158, 255, 0.2);
+  color: #4a9eff;
+}
+
+.med-type-badge.variable {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.med-type-badge.prn {
+  background: rgba(139, 92, 246, 0.2);
+  color: #8b5cf6;
+}
+
+.overview-edit-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.overview-edit-btn:hover {
+  background: rgba(74, 158, 255, 0.2);
+  color: #4a9eff;
+}
+
+/* Weekly Schedule Grid */
+.weekly-grid {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.grid-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: rgba(74, 158, 255, 0.1);
+}
+
+.grid-day-header {
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.grid-day-header.today {
+  background: rgba(74, 158, 255, 0.2);
+  color: #4a9eff;
+}
+
+.grid-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.grid-cell {
+  padding: 8px 4px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+}
+
+.grid-cell.today {
+  background: rgba(74, 158, 255, 0.08);
+}
+
+.grid-cell.has-dose {
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.grid-cell.today.has-dose {
+  background: rgba(74, 158, 255, 0.15);
+}
+
+.cell-dose {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+  margin-bottom: 2px;
+}
+
+.cell-time {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.cell-empty {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* Overview Instructions */
+.overview-instructions {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(74, 158, 255, 0.1);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* PRN Section in Overview */
+.overview-prn-section {
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  border-left: 4px solid #8b5cf6;
+}
+
+.overview-prn-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #8b5cf6;
+}
+
+.overview-prn-item {
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.overview-prn-item.clickable {
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.overview-prn-item.clickable:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.overview-prn-item.clickable:active {
+  transform: scale(0.99);
+}
+
+.overview-prn-item:last-child {
+  margin-bottom: 0;
+}
+
+.prn-view-btn {
+  margin-top: 10px;
+  align-self: flex-end;
+}
+
+.prn-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.prn-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+.prn-item-dosage {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.prn-item-max {
+  font-size: 11px;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.prn-item-instructions {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Daily Summary Footer in Overview */
+.overview-daily-summary {
+  background: rgba(74, 158, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(74, 158, 255, 0.2);
+}
+
+.overview-daily-summary h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a9eff;
+}
+
+/* ==========================================
+   Variable Dosage Editor Modal Styles
+   ========================================== */
+
+.medication-modal.editor-modal {
+  max-width: 800px;
+  max-height: 90vh;
+}
+
+/* Edit button in history modal */
+.btn-edit {
+  background: rgba(74, 158, 255, 0.2);
+  color: #4a9eff;
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.btn-edit:hover {
+  background: rgba(74, 158, 255, 0.3);
+}
+
+/* Editor Time Slots Container */
+.editor-time-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+/* Individual Time Slot */
+.editor-time-slot {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.time-slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.time-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.time-input-group label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.time-input-group input[type="time"] {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--text-light);
+  font-size: 16px;
+  font-family: monospace;
+}
+
+.time-input-group input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+.remove-time-btn {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s ease;
+}
+
+.remove-time-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+/* Quick Set Buttons */
+.quick-set-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.quick-set-buttons button {
+  background: rgba(74, 158, 255, 0.1);
+  color: #4a9eff;
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s ease;
+}
+
+.quick-set-buttons button:hover {
+  background: rgba(74, 158, 255, 0.2);
+}
+
+/* Dose Grid */
+.dose-grid {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dose-grid-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: rgba(74, 158, 255, 0.1);
+}
+
+.dose-grid-day {
+  text-align: center;
+  padding: 8px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dose-grid-day:last-child {
+  border-right: none;
+}
+
+.dose-grid-day.today {
+  background: rgba(74, 158, 255, 0.15);
+  color: #4a9eff;
+}
+
+.dose-grid-inputs {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.dose-input-cell {
+  padding: 8px 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dose-input-cell:last-child {
+  border-right: none;
+}
+
+.dose-input-cell.today {
+  background: rgba(74, 158, 255, 0.08);
+}
+
+.dose-input-cell input {
+  width: 40px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 6px;
+  color: var(--text-light);
+  font-size: 14px;
+  text-align: center;
+}
+
+.dose-input-cell input:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+/* Add Time Button */
+.add-time-btn {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px dashed rgba(34, 197, 94, 0.3);
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  width: 100%;
+  transition: background 0.2s ease;
+}
+
+.add-time-btn:hover {
+  background: rgba(34, 197, 94, 0.25);
+}
+
+/* Editor Preview Section */
+.editor-preview {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 24px;
+}
+
+.editor-preview h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+/* Preview Grid */
+.preview-grid {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.preview-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: rgba(74, 158, 255, 0.1);
+}
+
+.preview-day-header {
+  text-align: center;
+  padding: 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.preview-day-header:last-child {
+  border-right: none;
+}
+
+.preview-day-header.today {
+  background: rgba(74, 158, 255, 0.15);
+  color: #4a9eff;
+}
+
+.preview-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.preview-cell {
+  padding: 8px 4px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.preview-cell:last-child {
+  border-right: none;
+}
+
+.preview-cell.today {
+  background: rgba(74, 158, 255, 0.08);
+}
+
+.preview-cell.has-dose {
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.preview-dose {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+  margin-bottom: 2px;
+}
+
+.preview-time {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Weekly Total */
+.weekly-total {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.weekly-total strong {
+  color: var(--text-light);
+}
+
+/* Editor Actions */
+.editor-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 16px;
+}
+
+.btn-cancel {
+  background: rgba(107, 114, 128, 0.2);
+  color: var(--text-muted);
+  border: 1px solid rgba(107, 114, 128, 0.3);
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: rgba(107, 114, 128, 0.3);
+}
+
+.btn-save {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

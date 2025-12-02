@@ -2,18 +2,24 @@
 
 class FitnessApi {
   constructor() {
-    // For now, use local data. Later this will connect to a dedicated fitness API server
-    this.useLocalData = true
+    // Determine the backend URL based on environment
+    // When using ngrok, the backend is proxied through Vite on the same origin
+    const isNgrok = window.location.hostname.includes('ngrok')
+    const isHttps = window.location.protocol === 'https:'
+
+    if (isNgrok || isHttps) {
+      // Use Vite proxy (same origin) for ngrok/HTTPS
+      this.baseUrl = '/api/fitness'
+    } else {
+      // Direct backend connection for local development
+      this.baseUrl = `http://${window.location.hostname}:3001/api/fitness`
+    }
   }
 
   async request(endpoint, options = {}) {
-    if (this.useLocalData) {
-      // Simulate API responses with local data for now
-      return this.handleLocalRequest(endpoint, options)
-    }
-
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const url = `${this.baseUrl}${endpoint}`
+      const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
           ...options.headers
@@ -34,86 +40,31 @@ class FitnessApi {
     }
   }
 
-  async handleLocalRequest(endpoint, options = {}) {
-    // Simulate different API endpoints with local data
-    try {
-      // Handle endpoints with query parameters
-      const [baseEndpoint, queryParams] = endpoint.split('?')
-
-      switch (baseEndpoint) {
-        case '/daily':
-          const fitnessResponse = await fetch('/src/data/fitness.json')
-          const fitnessData = await fitnessResponse.json()
-          return { success: true, data: fitnessData.dailySummary }
-
-        case '/exercises':
-          const exerciseResponse = await fetch('/src/data/exercises-database.json')
-          const exerciseData = await exerciseResponse.json()
-          return { success: true, data: exerciseData.exercises }
-
-        case '/workout-history':
-          const extendedResponse = await fetch('/src/data/fitness-extended.json')
-          const extendedData = await extendedResponse.json()
-          return { success: true, data: extendedData.workoutHistory || [] }
-
-        case '/log-workout':
-          // Simulate successful workout logging
-          return { success: true, message: 'Workout logged successfully' }
-
-        case '/goals':
-          const goalsResponse = await fetch('/src/data/fitness-extended.json')
-          const goalsData = await goalsResponse.json()
-          return { success: true, data: goalsData.goals }
-
-        default:
-          throw new Error(`Unknown endpoint: ${endpoint}`)
-      }
-    } catch (error) {
-      throw new Error(`Local data request failed: ${error.message}`)
-    }
-  }
-
-  // Get daily fitness summary
-  async getDailySummary(date = null) {
-    const params = date ? `?date=${date}` : ''
-    return this.request(`/daily${params}`)
+  // Get today's activity summary
+  async getTodaySummary() {
+    return this.request('/today')
   }
 
   // Log a new workout
   async logWorkout(workoutData) {
-    return this.request('/log-workout', {
-      method: 'POST',
-      body: JSON.stringify(workoutData)
-    })
-  }
-
-  // Search exercises in database
-  async searchExercises(query, limit = 20) {
-    const result = await this.request('/exercises')
-
-    if (query && query.length > 0) {
-      const filteredExercises = result.data.filter(exercise =>
-        exercise.name.toLowerCase().includes(query.toLowerCase()) ||
-        exercise.category.toLowerCase().includes(query.toLowerCase()) ||
-        exercise.type.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, limit)
-
-      return { success: true, data: filteredExercises }
+    // Transform frontend workout format to backend format
+    const backendWorkout = {
+      workout_type: workoutData.type || workoutData.workout_type,
+      duration_min: workoutData.duration || workoutData.duration_min,
+      calories_burned: workoutData.caloriesBurned || workoutData.calories_burned,
+      distance_miles: workoutData.distance_miles,
+      steps: workoutData.steps,
+      heart_rate_avg: workoutData.heart_rate_avg,
+      intensity: workoutData.intensity || 'moderate',
+      video_id: workoutData.video_id || workoutData.videoId,
+      notes: workoutData.notes || workoutData.exercise,
+      started_at: workoutData.timestamp || workoutData.started_at || new Date().toISOString(),
+      ended_at: workoutData.ended_at
     }
 
-    return { success: true, data: result.data.slice(0, limit) }
-  }
-
-  // Get fitness goals
-  async getFitnessGoals() {
-    return this.request('/goals')
-  }
-
-  // Update fitness goals
-  async updateFitnessGoals(goals) {
-    return this.request('/goals', {
-      method: 'PUT',
-      body: JSON.stringify(goals)
+    return this.request('/workout', {
+      method: 'POST',
+      body: JSON.stringify(backendWorkout)
     })
   }
 
@@ -122,10 +73,22 @@ class FitnessApi {
     const params = new URLSearchParams()
     if (options.startDate) params.append('startDate', options.startDate)
     if (options.endDate) params.append('endDate', options.endDate)
-    if (options.days) params.append('days', options.days.toString())
+    if (options.type) params.append('type', options.type)
+    if (options.limit) params.append('limit', options.limit.toString())
+    if (options.days) {
+      // Calculate startDate from days ago
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - options.days)
+      params.append('startDate', startDate.toISOString().split('T')[0])
+    }
 
     const queryString = params.toString()
-    return this.request(`/workout-history${queryString ? `?${queryString}` : ''}`)
+    return this.request(`/workouts${queryString ? `?${queryString}` : ''}`)
+  }
+
+  // Get single workout by ID
+  async getWorkout(workoutId) {
+    return this.request(`/workout/${workoutId}`)
   }
 
   // Delete a workout
@@ -135,25 +98,30 @@ class FitnessApi {
     })
   }
 
-  // Get recent exercises
-  async getRecentExercises(limit = 10) {
-    const result = await this.searchExercises('', limit)
-    return result
+  // Get weekly activity summary
+  async getWeeklySummary() {
+    return this.request('/weekly')
+  }
+
+  // Update daily activity (from wearable sync)
+  async updateDailyActivity(data) {
+    return this.request('/daily', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
   }
 
   // Helper method to get all data needed for fitness component
-  async getFitnessDashboardData(date = null) {
+  async getFitnessDashboardData() {
     try {
-      const [dailySummary, recentExercises, workoutHistory] = await Promise.all([
-        this.getDailySummary(date),
-        this.getRecentExercises(5),
-        this.getWorkoutHistory({ days: 7 })
+      const [todaySummary, weeklySummary] = await Promise.all([
+        this.getTodaySummary(),
+        this.getWeeklySummary()
       ])
 
       return {
-        dailySummary: dailySummary.data,
-        recentExercises: recentExercises.data,
-        workoutHistory: workoutHistory.data,
+        todaySummary: todaySummary.data,
+        weeklySummary: weeklySummary.data,
         lastUpdated: new Date().toISOString()
       }
     } catch (error) {
@@ -166,24 +134,6 @@ class FitnessApi {
   calculateCaloriesBurned(exercise, durationMinutes) {
     const caloriesPerMinute = exercise.calories_per_minute || 8 // default fallback
     return Math.round(caloriesPerMinute * durationMinutes)
-  }
-
-  // Get exercises by category
-  async getExercisesByCategory(category) {
-    const result = await this.request('/exercises')
-    const categoryExercises = result.data.filter(exercise =>
-      exercise.category.toLowerCase() === category.toLowerCase()
-    )
-    return { success: true, data: categoryExercises }
-  }
-
-  // Get exercises by type (Strength, Cardio, etc.)
-  async getExercisesByType(type) {
-    const result = await this.request('/exercises')
-    const typeExercises = result.data.filter(exercise =>
-      exercise.type.toLowerCase() === type.toLowerCase()
-    )
-    return { success: true, data: typeExercises }
   }
 }
 

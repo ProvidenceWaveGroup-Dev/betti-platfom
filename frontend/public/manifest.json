@@ -12,49 +12,7 @@
   "categories": ["health", "medical", "productivity"],
   "icons": [
     {
-      "src": "/icon-72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-512.png",
+      "src": "/Betti Logo TM.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -68,7 +26,7 @@
       "url": "/?screen=health",
       "icons": [
         {
-          "src": "/icon-96.png",
+          "src": "/Betti Logo TM.png",
           "sizes": "96x96"
         }
       ]
@@ -80,7 +38,7 @@
       "url": "/?screen=video",
       "icons": [
         {
-          "src": "/icon-96.png",
+          "src": "/Betti Logo TM.png",
           "sizes": "96x96"
         }
       ]
@@ -92,61 +50,19 @@
       "url": "/?screen=medication",
       "icons": [
         {
-          "src": "/icon-96.png",
+          "src": "/Betti Logo TM.png",
           "sizes": "96x96"
         }
       ]
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshot-mobile-dashboard.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Mobile Dashboard"
-    },
-    {
-      "src": "/screenshot-mobile-health.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Health Monitoring"
-    }
-  ],
   "prefer_related_applications": false,
-  "protocol_handlers": [
-    {
-      "protocol": "web+betti",
-      "url": "/?action=%s"
-    }
-  ],
-  "handle_links": "preferred",
-  "edge_side_panel": {
-    "preferred_width": 400
-  },
   "display_override": [
-    "window-controls-overlay",
     "standalone",
     "minimal-ui",
     "browser"
   ],
   "launch_handler": {
     "client_mode": "focus-existing"
-  },
-  "file_handlers": [
-    {
-      "action": "/handle-health-data",
-      "accept": {
-        "application/json": [".json"],
-        "text/csv": [".csv"]
-      },
-      "icons": [
-        {
-          "src": "/icon-96.png",
-          "sizes": "96x96"
-        }
-      ]
-    }
-  ]
+  }
 }

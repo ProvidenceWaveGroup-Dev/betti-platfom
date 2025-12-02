@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import './VideoChat.css'
+import '../styles/mobileVideo.scss'
 
-function VideoChat() {
+function VideoChat({ variant = 'desktop', onNavigate }) {
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
   const [mediaStream, setMediaStream] = useState(null)
   const [peerConnection, setPeerConnection] = useState(null)
@@ -12,11 +13,18 @@ function VideoChat() {
   const [roomJoined, setRoomJoined] = useState(false)
   const [waitingParticipants, setWaitingParticipants] = useState([])
 
+  // Mobile-specific state
+  const [isMuted, setIsMuted] = useState(false)
+  const [isCameraOff, setIsCameraOff] = useState(false)
+  const [showControls, setShowControls] = useState(true)
+
   const localVideoRef = useRef(null)
   const remoteVideoRef = useRef(null)
 
   const roomId = 'main-room'
   const userId = useRef(Math.random().toString(36).substr(2, 9)).current
+
+  const isMobile = variant === 'mobile'
 
   // WebRTC configuration with STUN servers
   const rtcConfig = {
@@ -27,21 +35,39 @@ function VideoChat() {
   }
 
   useEffect(() => {
+    // Mobile: Initialize local video preview immediately
+    if (isMobile) {
+      const initializePreview = async () => {
+        try {
+          const stream = await getUserMedia()
+          if (stream) {
+            console.log('Local video preview initialized')
+          }
+        } catch (error) {
+          console.error('Failed to initialize video preview:', error)
+        }
+      }
+      initializePreview()
+    }
+
     // Initialize WebSocket connection
-    // When accessed via ngrok or other proxy, use relative path to leverage Vite proxy
-    // Otherwise use direct connection to video server
-    const isProxied = window.location.hostname.includes('ngrok') ||
-                      window.location.hostname.includes('localhost')
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
 
     let wsUrl
-    if (isProxied && !import.meta.env.VITE_VIDEO_SERVER_URL) {
-      // Use Vite proxy - connect to same host with /video path
+    if (isMobile) {
+      // Mobile: Always use proxy path for ngrok compatibility
       wsUrl = `${protocol}//${window.location.host}/video`
     } else {
-      // Direct connection to video server
-      const VIDEO_SERVER = import.meta.env.VITE_VIDEO_SERVER_URL || `${window.location.hostname}:8080`
-      wsUrl = `${protocol}//${VIDEO_SERVER}`
+      // Desktop: More complex logic
+      const isProxied = window.location.hostname.includes('ngrok') ||
+                        window.location.hostname.includes('localhost')
+
+      if (isProxied && !import.meta.env.VITE_VIDEO_SERVER_URL) {
+        wsUrl = `${protocol}//${window.location.host}/video`
+      } else {
+        const VIDEO_SERVER = import.meta.env.VITE_VIDEO_SERVER_URL || `${window.location.hostname}:8080`
+        wsUrl = `${protocol}//${VIDEO_SERVER}`
+      }
     }
 
     console.log('Connecting to video server at:', wsUrl)
@@ -63,10 +89,10 @@ function VideoChat() {
           handleJoinedRoom(data)
           break
         case 'user-joined':
-          handleUserJoined(data, ws) // Pass WebSocket reference
+          handleUserJoined(data, ws)
           break
         case 'offer':
-          handleOffer(data, ws) // Pass WebSocket reference directly
+          handleOffer(data, ws)
           break
         case 'answer':
           handleAnswer(data)
@@ -86,8 +112,8 @@ function VideoChat() {
       }
     }
 
-    ws.onclose = () => {
-      console.log('Disconnected from signaling server')
+    ws.onclose = (event) => {
+      console.log('Disconnected from signaling server', event.code, event.reason)
       setConnectionStatus('disconnected')
       setSignalingWs(null)
       signalingWsRef.current = null
@@ -95,62 +121,111 @@ function VideoChat() {
 
     ws.onerror = (error) => {
       console.error('WebSocket error:', error)
-      setConnectionStatus('connection failed - check certificate')
+      setConnectionStatus('connection failed')
+    }
+
+    // Mobile: Hide controls after 3 seconds
+    let hideControlsTimer
+    if (isMobile) {
+      hideControlsTimer = setTimeout(() => {
+        setShowControls(false)
+      }, 3000)
     }
 
     // Cleanup on component unmount
     return () => {
+      if (hideControlsTimer) clearTimeout(hideControlsTimer)
       if (ws.readyState === WebSocket.OPEN) {
         ws.close()
       }
-      if (mediaStream) {
+      if (!isMobile && mediaStream) {
         mediaStream.getTracks().forEach(track => track.stop())
       }
-      if (peerConnection) {
-        peerConnection.close()
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close()
+        peerConnectionRef.current = null
+        setPeerConnection(null)
       }
     }
   }, [])
 
   // Handle waiting participants after peer connection is created
   useEffect(() => {
-    console.log('useEffect triggered - peerConnection:', !!peerConnectionRef.current, 'waitingParticipants:', waitingParticipants)
     if (peerConnectionRef.current && waitingParticipants.length > 0) {
       const otherUserId = waitingParticipants[0]
 
-      // Only create offer if our user ID is lexicographically smaller (prevents glare)
       if (userId < otherUserId) {
-        console.log('We are the offerer (lower user ID), creating offer for waiting participants:', waitingParticipants)
-        setConnectionStatus('creating offer for waiting participants...')
+        console.log('We are the offerer, creating offer for waiting participants')
+        setConnectionStatus('creating offer...')
         createOffer(peerConnectionRef.current, signalingWs)
       } else {
-        console.log('We are the answerer (higher user ID), waiting for offer from:', otherUserId)
-        setConnectionStatus('waiting for offer from other participant...')
+        console.log('We are the answerer, waiting for offer')
+        setConnectionStatus('waiting for offer...')
       }
-      setWaitingParticipants([]) // Clear waiting participants
+      setWaitingParticipants([])
     }
   }, [peerConnection, waitingParticipants])
 
-  // Debug peer connection state changes
+  // Debug peer connection state changes (desktop only)
   useEffect(() => {
-    console.log('PEER CONNECTION STATE CHANGED:', peerConnection ? 'EXISTS' : 'NULL')
-    if (peerConnectionRef.current) {
-      console.log('Peer connection is now set to a valid RTCPeerConnection')
-    } else {
-      console.log('Peer connection is now NULL - this might be the problem!')
-      console.trace('Peer connection set to null - stack trace:')
+    if (!isMobile) {
+      console.log('PEER CONNECTION STATE CHANGED:', peerConnection ? 'EXISTS' : 'NULL')
     }
   }, [peerConnection])
 
   const getUserMedia = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
-      })
+      const constraints = isMobile
+        ? {
+            video: {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+              facingMode: 'user'
+            },
+            audio: true
+          }
+        : { video: true, audio: true }
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
       setMediaStream(stream)
+
       if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream
+        const videoElement = localVideoRef.current
+
+        if (isMobile) {
+          // Mobile: More robust video handling
+          videoElement.onloadedmetadata = null
+          videoElement.oncanplay = null
+
+          try {
+            videoElement.pause()
+          } catch (e) {}
+
+          videoElement.srcObject = stream
+
+          const handleVideoReady = async () => {
+            try {
+              if (videoElement.srcObject === stream && videoElement.readyState >= 1) {
+                const playPromise = videoElement.play()
+                if (playPromise !== undefined) {
+                  await playPromise
+                  console.log('Local video started successfully')
+                }
+              }
+            } catch (playError) {
+              console.warn('Local video autoplay failed:', playError)
+            } finally {
+              videoElement.removeEventListener('loadedmetadata', handleVideoReady)
+              videoElement.removeEventListener('canplay', handleVideoReady)
+            }
+          }
+
+          videoElement.addEventListener('loadedmetadata', handleVideoReady, { once: true })
+          videoElement.addEventListener('canplay', handleVideoReady, { once: true })
+        } else {
+          // Desktop: Simple assignment
+          videoElement.srcObject = stream
+        }
       }
       return stream
     } catch (error) {
@@ -163,84 +238,82 @@ function VideoChat() {
   const createPeerConnection = (stream) => {
     const pc = new RTCPeerConnection(rtcConfig)
 
-    // Add local stream tracks to peer connection
     if (stream) {
-      console.log('Adding local stream tracks to peer connection:')
+      console.log('Adding local stream tracks to peer connection')
       stream.getTracks().forEach(track => {
-        console.log('Adding track:', track.kind, track.label, 'enabled:', track.enabled)
+        console.log('Adding track:', track.kind, track.label)
         pc.addTrack(track, stream)
       })
-      console.log('Local tracks added to peer connection')
-    } else {
-      console.error('No stream provided to createPeerConnection!')
     }
 
     // Handle remote stream
     pc.ontrack = (event) => {
-      console.log('Received remote stream:', event)
-      console.log('Event streams:', event.streams)
-      console.log('Event track:', event.track)
+      console.log('Received remote stream')
       const [remoteStream] = event.streams
-      console.log('Remote stream:', remoteStream)
-      console.log('Remote stream tracks:', remoteStream ? remoteStream.getTracks() : 'No stream')
 
       if (remoteVideoRef.current) {
-        console.log('Setting remote video srcObject')
-        remoteVideoRef.current.srcObject = remoteStream
-        console.log('Remote video element srcObject set to:', remoteVideoRef.current.srcObject)
-      } else {
-        console.error('Remote video ref is null!')
+        const videoElement = remoteVideoRef.current
+
+        if (isMobile) {
+          // Mobile: More robust handling
+          videoElement.onloadedmetadata = null
+          videoElement.oncanplay = null
+
+          try {
+            videoElement.pause()
+          } catch (e) {}
+
+          videoElement.srcObject = remoteStream
+
+          const handleRemoteVideoReady = async () => {
+            try {
+              if (videoElement.srcObject === remoteStream && videoElement.readyState >= 1) {
+                const playPromise = videoElement.play()
+                if (playPromise !== undefined) {
+                  await playPromise
+                  console.log('Remote video started successfully')
+                }
+              }
+            } catch (playError) {
+              console.warn('Remote video autoplay failed:', playError)
+            } finally {
+              videoElement.removeEventListener('loadedmetadata', handleRemoteVideoReady)
+              videoElement.removeEventListener('canplay', handleRemoteVideoReady)
+            }
+          }
+
+          videoElement.addEventListener('loadedmetadata', handleRemoteVideoReady, { once: true })
+          videoElement.addEventListener('canplay', handleRemoteVideoReady, { once: true })
+        } else {
+          // Desktop: Simple assignment
+          videoElement.srcObject = remoteStream
+        }
       }
     }
 
     // Handle ICE candidates
     pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        // Use ref to get current WebSocket
-        if (signalingWsRef.current && signalingWsRef.current.readyState === WebSocket.OPEN) {
-          signalingWsRef.current.send(JSON.stringify({
-            type: 'ice-candidate',
-            roomId,
-            candidate: event.candidate
-          }))
-        } else {
-          console.warn('Cannot send ICE candidate - WebSocket not connected')
-        }
+      if (event.candidate && signalingWsRef.current && signalingWsRef.current.readyState === WebSocket.OPEN) {
+        signalingWsRef.current.send(JSON.stringify({
+          type: 'ice-candidate',
+          roomId,
+          candidate: event.candidate
+        }))
       }
     }
 
     // Handle connection state changes
     pc.onconnectionstatechange = () => {
       console.log('Peer connection state changed to:', pc.connectionState)
-      console.log('ICE connection state:', pc.iceConnectionState)
-      console.log('ICE gathering state:', pc.iceGatheringState)
-
       if (pc.connectionState === 'connected') {
         setIsCallActive(true)
         setConnectionStatus('call active')
-        console.log('✅ Peer connection established successfully!')
       } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
         setIsCallActive(false)
         setConnectionStatus('call ended')
-        console.log('❌ Peer connection ended/failed')
       }
     }
 
-    // Handle ICE connection state changes
-    pc.oniceconnectionstatechange = () => {
-      console.log('ICE connection state changed to:', pc.iceConnectionState)
-    }
-
-    // Debug: Check what senders we have after setting up the peer connection
-    setTimeout(() => {
-      const senders = pc.getSenders()
-      console.log('Peer connection senders after creation:', senders.length)
-      senders.forEach((sender, index) => {
-        console.log(`Sender ${index}:`, sender.track ? sender.track.kind : 'no track')
-      })
-    }, 100)
-
-    console.log('Setting peer connection state to:', pc ? 'valid peer connection' : 'null')
     setPeerConnection(pc)
     peerConnectionRef.current = pc
     return pc
@@ -254,12 +327,18 @@ function VideoChat() {
 
     setConnectionStatus('joining room...')
 
-    // Get user media
-    const stream = await getUserMedia()
-    if (!stream) return
+    // Use existing media stream or get new one
+    let stream = mediaStream
+    if (!stream) {
+      stream = await getUserMedia()
+      if (!stream) {
+        setConnectionStatus('media access failed')
+        return
+      }
+    }
 
     // Create peer connection
-    const pc = createPeerConnection(stream)
+    createPeerConnection(stream)
 
     // Join room
     signalingWs.send(JSON.stringify({
@@ -271,30 +350,17 @@ function VideoChat() {
 
   const createOffer = async (pc, websocket) => {
     try {
-      // Check what tracks we're offering
-      const senders = pc.getSenders()
-      console.log('Creating offer with senders:', senders.length)
-      senders.forEach((sender, index) => {
-        console.log(`Offering sender ${index}:`, sender.track ? `${sender.track.kind} (${sender.track.label})` : 'no track')
-      })
-
       const offer = await pc.createOffer()
-      console.log('Created offer:', offer)
       await pc.setLocalDescription(offer)
 
-      // Use the passed websocket parameter first, fall back to signalingWs
       const wsToUse = websocket || signalingWs
-
       if (wsToUse && wsToUse.readyState === WebSocket.OPEN) {
         wsToUse.send(JSON.stringify({
           type: 'offer',
           roomId,
           offer
         }))
-        console.log('Offer sent to remote peer')
-      } else {
-        console.error('Cannot send offer - WebSocket is not connected:',
-          wsToUse ? `state: ${wsToUse.readyState}` : 'WebSocket is null')
+        console.log('Offer sent')
       }
     } catch (error) {
       console.error('Error creating offer:', error)
@@ -306,7 +372,6 @@ function VideoChat() {
     setRoomJoined(true)
     setConnectionStatus('in room')
 
-    // Store participants to handle after peer connection is created
     if (data.participants && data.participants.length > 0) {
       setWaitingParticipants(data.participants)
     }
@@ -315,25 +380,13 @@ function VideoChat() {
   const handleUserJoined = (data, websocket) => {
     console.log('User joined:', data.userId)
 
-    // Only create offer if our user ID is lexicographically smaller (prevents glare)
     if (userId < data.userId) {
-      console.log('We are the offerer (lower user ID)')
       setConnectionStatus('user joined, creating offer...')
-
-      // Create offer for new user - use ref to get immediate value
       const pc = peerConnectionRef.current || peerConnection
       if (pc) {
-        console.log('Creating offer immediately with existing peer connection')
         createOffer(pc, websocket)
-      } else {
-        console.error('Cannot create offer - no peer connection available!')
-        console.log('This should not happen - peer connection should exist by now')
-        console.log('peerConnectionRef.current:', !!peerConnectionRef.current)
-        console.log('peerConnection state:', !!peerConnection)
-        console.log('peerConnectionRef.current:', !!peerConnectionRef.current)
       }
     } else {
-      console.log('We are the answerer (higher user ID), waiting for offer')
       setConnectionStatus('waiting for offer from new user...')
     }
   }
@@ -341,69 +394,43 @@ function VideoChat() {
   const handleOffer = async (data, websocket) => {
     console.log('Received offer from:', data.fromUserId)
 
-    // Check if we should be the answerer - prevent glare by comparing user IDs
     if (userId < data.fromUserId) {
-      console.log('Ignoring offer - we should be the offerer (lower user ID)')
-      console.log('This prevents WebRTC glare - only one peer should send offers')
+      console.log('Ignoring offer - we should be the offerer')
       return
     }
-
-    console.log('We are the answerer - processing offer from offerer')
 
     let pc = peerConnectionRef.current || peerConnection
     let currentStream = mediaStream
 
-    // If no peer connection exists, create one
     if (!pc) {
       const stream = await getUserMedia()
       if (!stream) return
       pc = createPeerConnection(stream)
       currentStream = stream
-    } else {
-      // If peer connection exists but no media stream, get one and add tracks
-      if (!currentStream) {
-        console.log('Peer connection exists but no media stream, getting media...')
-        const stream = await getUserMedia()
-        if (!stream) return
-
-        // Add tracks to existing peer connection
-        stream.getTracks().forEach(track => {
-          console.log('Adding track to existing peer connection:', track.kind, track.label)
-          pc.addTrack(track, stream)
-        })
-        currentStream = stream
-      } else {
-        console.log('Using existing peer connection and media stream')
-        // Verify tracks are added
-        const senders = pc.getSenders()
-        console.log('Current peer connection senders:', senders.length)
-      }
+      setMediaStream(stream)
+    } else if (!currentStream) {
+      const stream = await getUserMedia()
+      if (!stream) return
+      stream.getTracks().forEach(track => {
+        pc.addTrack(track, stream)
+      })
+      currentStream = stream
+      setMediaStream(stream)
     }
 
     try {
-      console.log('Setting remote description from offer...')
       await pc.setRemoteDescription(data.offer)
-      console.log('Creating answer...')
       const answer = await pc.createAnswer()
-      console.log('Setting local description (answer)...')
       await pc.setLocalDescription(answer)
 
-      console.log('Sending answer back...')
-      console.log('WebSocket state check - websocket:', !!websocket, 'signalingWs:', !!signalingWs)
-
-      // Use the passed websocket parameter first, fall back to signalingWs
       const wsToUse = websocket || signalingWs
-
       if (wsToUse && wsToUse.readyState === WebSocket.OPEN) {
         wsToUse.send(JSON.stringify({
           type: 'answer',
           roomId,
           answer
         }))
-        console.log('Answer sent successfully')
-      } else {
-        console.error('Cannot send answer - WebSocket is not connected:',
-          wsToUse ? `state: ${wsToUse.readyState}` : 'WebSocket is null')
+        console.log('Answer sent')
       }
     } catch (error) {
       console.error('Error handling offer:', error)
@@ -412,25 +439,18 @@ function VideoChat() {
 
   const handleAnswer = async (data) => {
     console.log('Received answer from:', data.fromUserId)
-    console.log('Current peer connection state:', !!peerConnectionRef.current)
 
     if (peerConnectionRef.current) {
       try {
-        console.log('Setting remote description from answer...')
         await peerConnectionRef.current.setRemoteDescription(data.answer)
-        console.log('Answer processed successfully')
+        console.log('Answer processed')
       } catch (error) {
         console.error('Error handling answer:', error)
       }
-    } else {
-      console.error('No peer connection available to handle answer')
-      console.error('Peer connection is null - this should not happen after sending an offer')
     }
   }
 
   const handleIceCandidate = async (data) => {
-    console.log('Received ICE candidate from:', data.fromUserId)
-
     if (peerConnectionRef.current) {
       try {
         await peerConnectionRef.current.addIceCandidate(data.candidate)
@@ -445,7 +465,6 @@ function VideoChat() {
     setIsCallActive(false)
     setConnectionStatus('user left')
 
-    // Reset remote video
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null
     }
@@ -475,7 +494,6 @@ function VideoChat() {
     setRoomJoined(false)
     setConnectionStatus('disconnected')
 
-    // Clear video elements
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null
     }
@@ -484,6 +502,146 @@ function VideoChat() {
     }
   }
 
+  // Mobile-specific controls
+  const toggleMute = () => {
+    if (mediaStream) {
+      const audioTrack = mediaStream.getAudioTracks()[0]
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled
+        setIsMuted(!audioTrack.enabled)
+      }
+    }
+  }
+
+  const toggleCamera = () => {
+    if (mediaStream) {
+      const videoTrack = mediaStream.getVideoTracks()[0]
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled
+        setIsCameraOff(!videoTrack.enabled)
+      }
+    }
+  }
+
+  const handleScreenTap = () => {
+    if (isMobile) {
+      setShowControls(true)
+      setTimeout(() => {
+        setShowControls(false)
+      }, 3000)
+    }
+  }
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="mobile-video" onClick={handleScreenTap}>
+        {/* Status Bar */}
+        <div className="video-status-bar">
+          <div className="status-indicator">
+            <span className={`status-dot ${connectionStatus === 'call active' ? 'active' : 'inactive'}`}></span>
+            <span className="status-text">{connectionStatus}</span>
+          </div>
+        </div>
+
+        {/* Video Container */}
+        <div className="mobile-video-container">
+          {/* Remote Video (Main) */}
+          <div className="remote-video-container">
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className="remote-video"
+            />
+            {!isCallActive && (
+              <div className="waiting-message">
+                {connectionStatus === 'disconnected' ? 'Start a call to connect' : 'Waiting for participant...'}
+              </div>
+            )}
+          </div>
+
+          {/* Local Video (Picture-in-Picture) */}
+          <div className="local-video-container">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              className="local-video"
+              style={{ display: !mediaStream ? 'none' : 'block' }}
+            />
+            {!mediaStream && (
+              <div className="camera-preview-placeholder">
+                <span>📷</span>
+                <span>Camera Loading...</span>
+              </div>
+            )}
+            {isCameraOff && mediaStream && (
+              <div className="camera-off-indicator">
+                <span>📷</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className={`mobile-video-controls ${showControls ? 'visible' : 'hidden'}`}>
+          {!roomJoined ? (
+            <div className="control-group">
+              <button
+                onClick={startCall}
+                disabled={!signalingWs || signalingWs.readyState !== WebSocket.OPEN}
+                className="control-button start-call"
+                style={{
+                  opacity: (!signalingWs || signalingWs.readyState !== WebSocket.OPEN) ? 0.6 : 1,
+                  pointerEvents: (!signalingWs || signalingWs.readyState !== WebSocket.OPEN) ? 'none' : 'auto'
+                }}
+              >
+                <span className="control-icon">📞</span>
+                <span className="control-label">Start Call</span>
+              </button>
+            </div>
+          ) : (
+            <div className="control-group">
+              <button
+                onClick={toggleMute}
+                className={`control-button ${isMuted ? 'muted' : ''}`}
+              >
+                <span className="control-icon">{isMuted ? '🔇' : '🔊'}</span>
+                <span className="control-label">{isMuted ? 'Unmute' : 'Mute'}</span>
+              </button>
+
+              <button
+                onClick={toggleCamera}
+                className={`control-button ${isCameraOff ? 'camera-off' : ''}`}
+              >
+                <span className="control-icon">{isCameraOff ? '📹' : '📷'}</span>
+                <span className="control-label">{isCameraOff ? 'Camera On' : 'Camera Off'}</span>
+              </button>
+
+              <button
+                onClick={endCall}
+                className="control-button end-call"
+              >
+                <span className="control-icon">📵</span>
+                <span className="control-label">End Call</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Room Info */}
+        {roomJoined && (
+          <div className="room-info">
+            <span>Room: {roomId}</span>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Desktop layout
   return (
     <div className="video-chat">
       <div className="video-chat-header">
