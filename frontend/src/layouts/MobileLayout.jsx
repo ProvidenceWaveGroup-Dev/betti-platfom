@@ -7,7 +7,7 @@ import MobileDashboard from '../screens/MobileDashboard'
 import MobileHealth from '../screens/MobileHealth'
 import MobileSchedule from '../screens/MobileSchedule'
 import MobileMedication from '../screens/MobileMedication'
-import MobileNutrition from '../screens/MobileNutrition'
+import Nutrition from '../components/Nutrition'
 import MobileFitness from '../screens/MobileFitness'
 import MobileHydration from '../screens/MobileHydration'
 import MobileVideo from '../screens/MobileVideo'
@@ -30,7 +30,7 @@ const MobileLayout = () => {
       case 'medication':
         return <MobileMedication onNavigate={handleNavigate} />
       case 'nutrition':
-        return <MobileNutrition onNavigate={handleNavigate} />
+        return <Nutrition variant="mobile" onNavigate={handleNavigate} />
       case 'fitness':
         return <MobileFitness onNavigate={handleNavigate} />
       case 'hydration':
