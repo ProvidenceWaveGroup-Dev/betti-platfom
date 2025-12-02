@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import nutritionApi from '../services/nutritionApi'
 import '../styles/mobileNutrition.scss'
 
 const MobileNutrition = ({ onNavigate }) => {
@@ -25,26 +26,25 @@ const MobileNutrition = ({ onNavigate }) => {
     try {
       setLoading(true)
 
-      // Simulate fallback data (same structure as desktop)
-      setNutritionData({
-        dailySummary: {
-          calories: { consumed: 1800, target: 2200, percentage: 82 },
-          protein: { consumed: 85, target: 110, percentage: 77 },
-          carbs: { consumed: 200, target: 275, percentage: 73 },
-          fat: { consumed: 65, target: 73, percentage: 89 },
-          fiber: { consumed: 18, target: 25, percentage: 72 },
-          sodium: { consumed: 1580, target: 2300, percentage: 69 }
-        },
-        todaysMeals: [
-          { id: 1, time: '08:30', mealType: 'Breakfast', totalCalories: 450 },
-          { id: 2, time: '12:15', mealType: 'Lunch', totalCalories: 620 },
-          { id: 3, time: '15:00', mealType: 'Snack', totalCalories: 180 },
-          { id: 4, time: '18:30', mealType: 'Dinner', totalCalories: 550 }
-        ],
-        lastUpdated: new Date().toISOString()
-      })
+      // Fetch from the same API as desktop
+      const data = await nutritionApi.getNutritionDashboardData()
+      setNutritionData(data)
     } catch (error) {
       console.error('Error loading nutrition data:', error)
+
+      // Fallback data if API fails
+      setNutritionData({
+        dailySummary: {
+          calories: { consumed: 0, target: 2200, percentage: 0 },
+          protein: { consumed: 0, target: 110, percentage: 0 },
+          carbs: { consumed: 0, target: 275, percentage: 0 },
+          fat: { consumed: 0, target: 73, percentage: 0 },
+          fiber: { consumed: 0, target: 25, percentage: 0 },
+          sodium: { consumed: 0, target: 2300, percentage: 0 }
+        },
+        todaysMeals: [],
+        lastUpdated: new Date().toISOString()
+      })
     } finally {
       setLoading(false)
     }
@@ -84,26 +84,17 @@ const MobileNutrition = ({ onNavigate }) => {
     return time
   }
 
-  // Food search with debounce - fallback to local database
+  // Food search with debounce - use nutritionApi
   useEffect(() => {
     if (searchQuery.length >= 2) {
       const timeoutId = setTimeout(async () => {
         try {
           setMealLoading(true)
 
-          // Fallback to local foods database
-          const response = await fetch('/src/data/foods-database.json')
-          const localDb = await response.json()
-
-          const searchTerm = searchQuery.toLowerCase()
-          const matches = localDb.foods
-            .filter(food =>
-              food.name.toLowerCase().includes(searchTerm) ||
-              (food.category && food.category.toLowerCase().includes(searchTerm))
-            )
-            .slice(0, 10)
-
-          setSearchResults(matches)
+          // Use the same API as desktop - API returns { data: [...] }
+          const response = await nutritionApi.searchFoods(searchQuery)
+          const foods = response.data || response || []
+          setSearchResults(Array.isArray(foods) ? foods.slice(0, 10) : [])
         } catch (error) {
           console.error('Food search error:', error)
           setSearchResults([])
@@ -179,7 +170,7 @@ const MobileNutrition = ({ onNavigate }) => {
     setSelectedFoods(updated)
   }
 
-  const handleMealSubmit = () => {
+  const handleMealSubmit = async () => {
     if (selectedFoods.length === 0) {
       setMealError('Please add at least one food item')
       return
@@ -188,44 +179,22 @@ const MobileNutrition = ({ onNavigate }) => {
     try {
       setMealLoading(true)
 
-      // Calculate totals for this meal
-      const totalCalories = selectedFoods.reduce((sum, food) => sum + food.calories, 0)
-      const totalProtein = selectedFoods.reduce((sum, food) => sum + food.protein, 0)
-      const totalCarbs = selectedFoods.reduce((sum, food) => sum + food.carbs, 0)
-      const totalFat = selectedFoods.reduce((sum, food) => sum + food.fat, 0)
+      // Format foods for API
+      const foods = selectedFoods.map(food => ({
+        name: food.name,
+        quantity: food.quantity,
+        unit: food.unit || 'serving',
+        calories: Math.round(food.calories / food.quantity), // Per serving
+        protein: Math.round(food.protein / food.quantity),
+        carbs: Math.round(food.carbs / food.quantity),
+        fat: Math.round(food.fat / food.quantity)
+      }))
 
-      // Create new meal entry
-      const newMeal = {
-        id: Date.now(),
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        mealType: mealType.charAt(0).toUpperCase() + mealType.slice(1),
-        totalCalories: Math.round(totalCalories),
-        foods: selectedFoods,
-        timestamp: new Date().toISOString()
-      }
+      // Submit to API - logMeal takes (mealType, foods) as separate arguments
+      await nutritionApi.logMeal(mealType, foods)
 
-      // Update nutrition data with new meal
-      const updatedData = { ...nutritionData }
-      if (!updatedData.todaysMeals) {
-        updatedData.todaysMeals = []
-      }
-      updatedData.todaysMeals.push(newMeal)
-
-      // Update daily summary
-      if (updatedData.dailySummary) {
-        updatedData.dailySummary.calories.consumed += totalCalories
-        updatedData.dailySummary.protein.consumed += totalProtein
-        updatedData.dailySummary.carbs.consumed += totalCarbs
-        updatedData.dailySummary.fat.consumed += totalFat
-
-        // Recalculate percentages
-        updatedData.dailySummary.calories.percentage = Math.round((updatedData.dailySummary.calories.consumed / updatedData.dailySummary.calories.target) * 100)
-        updatedData.dailySummary.protein.percentage = Math.round((updatedData.dailySummary.protein.consumed / updatedData.dailySummary.protein.target) * 100)
-        updatedData.dailySummary.carbs.percentage = Math.round((updatedData.dailySummary.carbs.consumed / updatedData.dailySummary.carbs.target) * 100)
-        updatedData.dailySummary.fat.percentage = Math.round((updatedData.dailySummary.fat.consumed / updatedData.dailySummary.fat.target) * 100)
-      }
-
-      setNutritionData(updatedData)
+      // Reload data from API to get updated totals
+      await loadNutritionData()
 
       // Close modal and reset
       setShowMealModal(false)
@@ -242,6 +211,7 @@ const MobileNutrition = ({ onNavigate }) => {
       }
 
     } catch (error) {
+      console.error('Failed to log meal:', error)
       setMealError('Failed to log meal: ' + error.message)
     } finally {
       setMealLoading(false)
@@ -261,48 +231,12 @@ const MobileNutrition = ({ onNavigate }) => {
     try {
       setDetailsLoading(true)
 
-      // Generate mock history data for the last 7 days since API may not be available
-      const mockHistory = []
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date()
-        date.setDate(date.getDate() - i)
-
-        // Generate mock data for each day
-        const dayData = {
-          date: date.toISOString(),
-          calories: { consumed: Math.floor(Math.random() * 400) + 1600, target: 2200, percentage: 0 },
-          protein: { consumed: Math.floor(Math.random() * 20) + 80, target: 110, percentage: 0 },
-          carbs: { consumed: Math.floor(Math.random() * 50) + 200, target: 275, percentage: 0 },
-          fat: { consumed: Math.floor(Math.random() * 15) + 60, target: 73, percentage: 0 },
-          fiber: { consumed: Math.floor(Math.random() * 8) + 15, target: 25, percentage: 0 },
-          todaysMeals: []
-        }
-
-        // Calculate percentages
-        dayData.calories.percentage = Math.round((dayData.calories.consumed / dayData.calories.target) * 100)
-        dayData.protein.percentage = Math.round((dayData.protein.consumed / dayData.protein.target) * 100)
-        dayData.carbs.percentage = Math.round((dayData.carbs.consumed / dayData.carbs.target) * 100)
-        dayData.fat.percentage = Math.round((dayData.fat.consumed / dayData.fat.target) * 100)
-        dayData.fiber.percentage = Math.round((dayData.fiber.consumed / dayData.fiber.target) * 100)
-
-        // Add some meals for variety
-        if (Math.random() > 0.2) { // 80% chance of having meals
-          const mealCount = Math.floor(Math.random() * 4) + 1
-          for (let j = 0; j < mealCount; j++) {
-            dayData.todaysMeals.push({
-              id: Math.random(),
-              mealType: ['Breakfast', 'Lunch', 'Dinner', 'Snack'][j],
-              totalCalories: Math.floor(Math.random() * 200) + 300
-            })
-          }
-        }
-
-        mockHistory.push(dayData)
-      }
-
-      setNutritionHistory(mockHistory)
+      // Try to fetch history from API
+      const history = await nutritionApi.getNutritionHistory(7)
+      setNutritionHistory(history || [])
     } catch (error) {
       console.error('Error loading nutrition details:', error)
+      setNutritionHistory([])
     } finally {
       setDetailsLoading(false)
     }
@@ -359,7 +293,8 @@ const MobileNutrition = ({ onNavigate }) => {
   }
 
   const caloriesData = nutritionData?.dailySummary?.calories
-  const totalCaloriesToday = nutritionData?.todaysMeals?.reduce((sum, meal) => sum + meal.totalCalories, 0) || 0
+  const todaysMeals = nutritionData?.dailySummary?.todaysMeals || []
+  const totalCaloriesToday = todaysMeals.reduce((sum, meal) => sum + meal.totalCalories, 0) || 0
 
   return (
     <div className="mobile-nutrition">
@@ -413,7 +348,7 @@ const MobileNutrition = ({ onNavigate }) => {
         <h3>Macronutrients</h3>
         <div className="macros-grid">
           {nutritionData?.dailySummary && Object.entries(nutritionData.dailySummary)
-            .filter(([key]) => key !== 'calories')
+            .filter(([key]) => ['protein', 'carbs', 'fat', 'fiber', 'sodium'].includes(key))
             .map(([macroType, macro]) => (
             <div key={macroType} className={`macro-item ${getStatusClass(macro.percentage || 0)}`}>
               <div className="macro-header">
@@ -453,11 +388,11 @@ const MobileNutrition = ({ onNavigate }) => {
       </section>
 
       {/* Today's Meals */}
-      {nutritionData?.todaysMeals && nutritionData.todaysMeals.length > 0 && (
+      {todaysMeals.length > 0 && (
         <section className="meals-section">
           <h3>Today's Meals</h3>
           <div className="meals-list">
-            {nutritionData.todaysMeals.map(meal => (
+            {todaysMeals.map(meal => (
               <div key={meal.id} className="meal-item">
                 <div className="meal-icon">
                   {getMealTypeIcon(meal.mealType)}

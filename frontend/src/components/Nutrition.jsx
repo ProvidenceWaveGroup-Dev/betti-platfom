@@ -81,7 +81,9 @@ function Nutrition({ isCollapsed = false }) {
           </span>
         </div>
         <div className="mini-nutrition-grid">
-          {nutritionData?.dailySummary && Object.entries(nutritionData.dailySummary).slice(0, 4).map(([key, macro]) => (
+          {nutritionData?.dailySummary && Object.entries(nutritionData.dailySummary)
+            .filter(([key]) => ['calories', 'protein', 'carbs', 'fat'].includes(key))
+            .map(([key, macro]) => (
             <div key={key} className="mini-nutrition-item">
               <span className="mini-nutrition-icon">
                 {key === 'calories' ? '🔥' :
@@ -135,7 +137,9 @@ function Nutrition({ isCollapsed = false }) {
       </div>
 
       <div className="nutrition-grid">
-        {nutritionData?.dailySummary && Object.entries(nutritionData.dailySummary).map(([macroType, macro]) => (
+        {nutritionData?.dailySummary && Object.entries(nutritionData.dailySummary)
+          .filter(([key]) => ['calories', 'protein', 'carbs', 'fat', 'fiber', 'sodium'].includes(key))
+          .map(([macroType, macro]) => (
           <div key={macroType} className="nutrition-item">
             <div className="nutrition-icon-wrapper">
               <span className="nutrition-icon">{getMacroIcon(macroType)}</span>
@@ -172,11 +176,11 @@ function Nutrition({ isCollapsed = false }) {
         ))}
       </div>
 
-      {nutritionData?.todaysMeals && nutritionData.todaysMeals.length > 0 && (
+      {nutritionData?.dailySummary?.todaysMeals && nutritionData.dailySummary.todaysMeals.length > 0 && (
         <div className="recent-meals">
           <h3 className="recent-meals-title">Today's Meals</h3>
           <div className="meals-list">
-            {nutritionData.todaysMeals.slice(-3).map(meal => (
+            {nutritionData.dailySummary.todaysMeals.slice(-3).map(meal => (
               <div key={meal.id} className="meal-item">
                 <div className="meal-info">
                   <div className="meal-time">{meal.time}</div>
