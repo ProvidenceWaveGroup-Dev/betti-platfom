@@ -2,96 +2,132 @@ import React, { useState, useEffect } from 'react'
 import './Hydration.css'
 import '../styles/mobileHydration.scss'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
 function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
-  // Sip-based hydration tracking
-  const [sipCounts, setSipCounts] = useState({ sips: 0, bigSips: 0 })
+  // Hydration tracking state
   const [todayIntake, setTodayIntake] = useState(0) // in fl oz
-  const [lastSipTime, setLastSipTime] = useState(null)
+  const [dailyGoal, setDailyGoal] = useState(64)
+  const [drinks, setDrinks] = useState([])
+  const [lastDrinkTime, setLastDrinkTime] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [migrated, setMigrated] = useState(false)
 
   const isMobile = variant === 'mobile'
 
-  // Sip size estimates (in fl oz)
+  // Sip sizes (in fl oz)
   const SIP_SIZE = 0.5    // Regular sip: ~0.5 fl oz
   const BIG_SIP_SIZE = 1.0  // Big sip: ~1 fl oz
-  const DAILY_TARGET = 64   // Target: 64 fl oz (8 cups)
 
-  // Load today's data from localStorage
+  // Quick-add sizes (in fl oz)
+  const QUICK_SIZES = [8, 12, 16]
+
+  // Load today's data from API
   useEffect(() => {
     loadHydrationData()
   }, [])
 
-  const loadHydrationData = () => {
+  const loadHydrationData = async () => {
     try {
       setLoading(true)
-      const today = new Date().toISOString().split('T')[0]
-      const savedData = localStorage.getItem(`hydration_${today}`)
 
-      if (savedData) {
-        const data = JSON.parse(savedData)
-        setSipCounts(data.sipCounts || { sips: 0, bigSips: 0 })
-        setTodayIntake(data.todayIntake || 0)
-        setLastSipTime(data.lastSipTime)
-      } else {
-        // Initialize with default values
-        setSipCounts({ sips: 0, bigSips: 0 })
-        setTodayIntake(0)
-        setLastSipTime(null)
+      // Fetch today's summary
+      const response = await fetch(`${API_URL}/api/hydration/today`)
+      if (!response.ok) throw new Error('Failed to fetch hydration data')
+
+      const result = await response.json()
+      const data = result.data
+
+      setTodayIntake(data.consumed || 0)
+      setDailyGoal(data.target || 64)
+      setDrinks(data.drinks || [])
+
+      // Set last drink time
+      if (data.drinks && data.drinks.length > 0) {
+        setLastDrinkTime(data.drinks[0].recorded_at)
+      }
+
+      // Migrate localStorage data if needed (one-time migration)
+      if (!migrated && data.drinks.length === 0) {
+        await migrateLocalStorageData()
+        setMigrated(true)
       }
     } catch (error) {
       console.error('Error loading hydration data:', error)
-      setSipCounts({ sips: 0, bigSips: 0 })
       setTodayIntake(0)
-      setLastSipTime(null)
+      setDrinks([])
+      setLastDrinkTime(null)
     } finally {
       setLoading(false)
     }
   }
 
-  // Save data to localStorage
-  const saveData = (newSipCounts, newIntake, timestamp) => {
-    const today = new Date().toISOString().split('T')[0]
-    const data = {
-      sipCounts: newSipCounts,
-      todayIntake: newIntake,
-      lastSipTime: timestamp,
-      date: today
+  // Migrate existing localStorage data to database
+  const migrateLocalStorageData = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const savedData = localStorage.getItem(`hydration_${today}`)
+
+      if (savedData) {
+        const data = JSON.parse(savedData)
+        if (data.todayIntake > 0) {
+          // Log the total intake as a single entry
+          await fetch(`${API_URL}/api/hydration/log`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount_oz: data.todayIntake,
+              beverage_type: 'water',
+              recorded_at: data.lastSipTime || new Date().toISOString()
+            })
+          })
+
+          // Reload data after migration
+          await loadHydrationData()
+        }
+      }
+    } catch (error) {
+      console.error('Error migrating localStorage data:', error)
     }
-    localStorage.setItem(`hydration_${today}`, JSON.stringify(data))
   }
 
-  // Add sip function
-  const addSip = (isBigSip = false) => {
-    const timestamp = new Date().toISOString()
-    const sipAmount = isBigSip ? BIG_SIP_SIZE : SIP_SIZE
-    const newIntake = todayIntake + sipAmount
+  // Log water intake
+  const logIntake = async (amount_oz) => {
+    try {
+      const response = await fetch(`${API_URL}/api/hydration/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount_oz,
+          beverage_type: 'water'
+        })
+      })
 
-    const newSipCounts = {
-      sips: sipCounts.sips + (isBigSip ? 0 : 1),
-      bigSips: sipCounts.bigSips + (isBigSip ? 1 : 0)
-    }
+      if (!response.ok) throw new Error('Failed to log hydration')
 
-    setSipCounts(newSipCounts)
-    setTodayIntake(newIntake)
-    setLastSipTime(timestamp)
-    saveData(newSipCounts, newIntake, timestamp)
+      // Reload data
+      await loadHydrationData()
 
-    // Mobile haptic feedback
-    if (isMobile && navigator.vibrate) {
-      navigator.vibrate(isBigSip ? [30, 20, 30] : [30])
+      // Mobile haptic feedback
+      if (isMobile && navigator.vibrate) {
+        navigator.vibrate([30])
+      }
+    } catch (error) {
+      console.error('Error logging hydration:', error)
+      alert('Failed to log water intake')
     }
   }
 
   // Calculate progress
-  const percentage = Math.min(100, Math.round((todayIntake / DAILY_TARGET) * 100))
-  const remainingOz = Math.max(0, DAILY_TARGET - todayIntake)
-  const totalSips = sipCounts.sips + sipCounts.bigSips
+  const percentage = Math.min(100, Math.round((todayIntake / dailyGoal) * 100))
+  const remainingOz = Math.max(0, dailyGoal - todayIntake)
+  const drinkCount = drinks.length
 
-  const formatLastSip = (timestamp) => {
-    if (!timestamp) return 'No sips yet'
-    const sipTime = new Date(timestamp)
+  const formatLastDrink = (timestamp) => {
+    if (!timestamp) return 'No drinks logged'
+    const drinkTime = new Date(timestamp)
     const now = new Date()
-    const diffMinutes = Math.floor((now - sipTime) / 60000)
+    const diffMinutes = Math.floor((now - drinkTime) / 60000)
 
     if (diffMinutes < 1) return 'Just now'
     if (diffMinutes < 60) return `${diffMinutes}m ago`
@@ -131,7 +167,7 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
           </div>
           <div className="mini-hydration-info">
             <span className="mini-percentage">{percentage}%</span>
-            <span className="mini-last-intake">{totalSips} sips today</span>
+            <span className="mini-last-intake">{drinkCount} drinks today</span>
           </div>
         </div>
       </div>
@@ -182,7 +218,7 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
               <div className="consumed-amount">
                 <span className="amount-number">{Math.round(todayIntake)}</span>
                 <span className="amount-separator">/</span>
-                <span className="amount-target">{DAILY_TARGET}</span>
+                <span className="amount-target">{dailyGoal}</span>
                 <span className="amount-unit">fl oz</span>
               </div>
               <div className="remaining-amount">
@@ -204,10 +240,10 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
         {/* Sip Buttons */}
         <section className="sip-actions">
           <h3>Quick Tracking</h3>
-          <div className="sip-buttons">
+          <div className="sip-buttons-grid">
             <button
               className="sip-button regular-sip"
-              onClick={() => addSip(false)}
+              onClick={() => logIntake(SIP_SIZE)}
             >
               <div className="sip-icon">💧</div>
               <div className="sip-content">
@@ -217,7 +253,7 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
             </button>
             <button
               className="sip-button big-sip"
-              onClick={() => addSip(true)}
+              onClick={() => logIntake(BIG_SIP_SIZE)}
             >
               <div className="sip-icon">💦</div>
               <div className="sip-content">
@@ -225,6 +261,19 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
                 <div className="sip-size">{BIG_SIP_SIZE} fl oz</div>
               </div>
             </button>
+            {QUICK_SIZES.map(size => (
+              <button
+                key={size}
+                className="sip-button quick-add"
+                onClick={() => logIntake(size)}
+              >
+                <div className="sip-icon">🥤</div>
+                <div className="sip-content">
+                  <div className="sip-label">{size} oz Glass</div>
+                  <div className="sip-size">{size} fl oz</div>
+                </div>
+              </button>
+            ))}
           </div>
         </section>
 
@@ -233,24 +282,24 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
           <h3>Today's Summary</h3>
           <div className="summary-grid">
             <div className="summary-item">
-              <div className="summary-icon">🥛</div>
+              <div className="summary-icon">💧</div>
               <div className="summary-content">
-                <div className="summary-value">{sipCounts.sips}</div>
-                <div className="summary-label">Regular Sips</div>
+                <div className="summary-value">{Math.round(todayIntake)}</div>
+                <div className="summary-label">fl oz Consumed</div>
               </div>
             </div>
             <div className="summary-item">
-              <div className="summary-icon">💦</div>
+              <div className="summary-icon">🥤</div>
               <div className="summary-content">
-                <div className="summary-value">{sipCounts.bigSips}</div>
-                <div className="summary-label">Big Sips</div>
+                <div className="summary-value">{drinkCount}</div>
+                <div className="summary-label">Drinks Logged</div>
               </div>
             </div>
             <div className="summary-item">
-              <div className="summary-icon">📊</div>
+              <div className="summary-icon">🎯</div>
               <div className="summary-content">
-                <div className="summary-value">{totalSips}</div>
-                <div className="summary-label">Total Sips</div>
+                <div className="summary-value">{percentage}%</div>
+                <div className="summary-label">Goal Progress</div>
               </div>
             </div>
           </div>
@@ -261,15 +310,15 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
           <div className="detail-row">
             <div className="detail-item">
               <span className="detail-icon">⏰</span>
-              <span className="detail-label">Last Sip</span>
-              <span className="detail-value">{formatLastSip(lastSipTime)}</span>
+              <span className="detail-label">Last Drink</span>
+              <span className="detail-value">{formatLastDrink(lastDrinkTime)}</span>
             </div>
           </div>
           <div className="detail-row">
             <div className="detail-item">
-              <span className="detail-icon">🎯</span>
-              <span className="detail-label">Average per Sip</span>
-              <span className="detail-value">{totalSips > 0 ? (todayIntake / totalSips).toFixed(1) : '0'} fl oz</span>
+              <span className="detail-icon">📊</span>
+              <span className="detail-label">Average per Drink</span>
+              <span className="detail-value">{drinkCount > 0 ? (todayIntake / drinkCount).toFixed(1) : '0'} fl oz</span>
             </div>
           </div>
         </section>
@@ -304,7 +353,7 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
             <div className="hydration-numbers">
               <span className="consumed">{Math.round(todayIntake)}</span>
               <span className="separator">/</span>
-              <span className="target">{DAILY_TARGET}</span>
+              <span className="target">{dailyGoal}</span>
               <span className="unit">fl oz</span>
             </div>
             <div className="progress-bar">
@@ -322,56 +371,63 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
 
         <div className="sip-tracking">
           <div className="sip-counter">
-            <h4>Today's Sips</h4>
+            <h4>Quick Tracking</h4>
             <div className="sip-stats">
-              <div className="sip-stat">
-                <span className="sip-count">{sipCounts.sips}</span>
-                <span className="sip-label">Regular Sips</span>
-                <span className="sip-amount">(~{SIP_SIZE} fl oz each)</span>
-              </div>
-              <div className="sip-stat">
-                <span className="sip-count">{sipCounts.bigSips}</span>
-                <span className="sip-label">Big Sips</span>
-                <span className="sip-amount">(~{BIG_SIP_SIZE} fl oz each)</span>
-              </div>
+              <p className="quick-add-hint">Track sips or log full glasses</p>
             </div>
           </div>
 
           <div className="sip-buttons">
             <button
               className="sip-button regular-sip"
-              onClick={() => addSip(false)}
+              onClick={() => logIntake(SIP_SIZE)}
             >
               <span className="sip-icon">💧</span>
               <span className="sip-text">Sip</span>
-              <span className="sip-size">{SIP_SIZE} fl oz</span>
+              <span className="sip-size">{SIP_SIZE} oz</span>
             </button>
             <button
               className="sip-button big-sip"
-              onClick={() => addSip(true)}
+              onClick={() => logIntake(BIG_SIP_SIZE)}
             >
               <span className="sip-icon">💦</span>
               <span className="sip-text">Big Sip</span>
-              <span className="sip-size">{BIG_SIP_SIZE} fl oz</span>
+              <span className="sip-size">{BIG_SIP_SIZE} oz</span>
             </button>
+          </div>
+
+          <div className="quick-add-section">
+            <h4>Quick Add</h4>
+            <div className="quick-add-buttons">
+              {QUICK_SIZES.map(size => (
+                <button
+                  key={size}
+                  className="quick-button"
+                  onClick={() => logIntake(size)}
+                >
+                  <span className="quick-icon">🥤</span>
+                  <span className="quick-text">{size} oz</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         <div className="hydration-details">
           <div className="detail-item">
             <span className="detail-icon">⏰</span>
-            <span className="detail-label">Last Sip:</span>
-            <span className="detail-value">{formatLastSip(lastSipTime)}</span>
+            <span className="detail-label">Last Drink:</span>
+            <span className="detail-value">{formatLastDrink(lastDrinkTime)}</span>
+          </div>
+          <div className="detail-item">
+            <span className="detail-icon">🥤</span>
+            <span className="detail-label">Drinks Today:</span>
+            <span className="detail-value">{drinkCount} logged</span>
           </div>
           <div className="detail-item">
             <span className="detail-icon">📊</span>
-            <span className="detail-label">Total Sips:</span>
-            <span className="detail-value">{totalSips} sips</span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-icon">🎯</span>
-            <span className="detail-label">Average per Sip:</span>
-            <span className="detail-value">{totalSips > 0 ? (todayIntake / totalSips).toFixed(1) : '0'} fl oz</span>
+            <span className="detail-label">Average per Drink:</span>
+            <span className="detail-value">{drinkCount > 0 ? (todayIntake / drinkCount).toFixed(1) : '0'} fl oz</span>
           </div>
         </div>
       </div>

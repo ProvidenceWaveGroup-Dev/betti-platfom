@@ -1,190 +1,151 @@
 import React, { useState, useEffect } from 'react'
+import TodaySchedule from './TodaySchedule'
+import AppointmentCalendar from './AppointmentCalendar'
+import AddAppointmentModal from './AddAppointmentModal'
+import AppointmentDetailsModal from './AppointmentDetailsModal'
 import './Appointments.css'
-import '../styles/mobileSchedule.scss'
 
-function Appointments({ isCollapsed = false, variant = 'desktop', onNavigate }) {
-  const [appointments, setAppointments] = useState([])
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
+/**
+ * Appointments Panel Component
+ * Main panel with view toggle between Calendar and Today's Schedule
+ */
+function Appointments({ isCollapsed = false, variant = 'desktop' }) {
   const isMobile = variant === 'mobile'
 
+  // Detect mobile and force list view
+  const [view, setView] = useState('list') // 'list' or 'calendar'
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [stats, setStats] = useState({ total: 0, completed: 0, percentage: 0 })
+
+  // Load today's appointments for stats
   useEffect(() => {
-    fetch('/src/data/appointments.json')
-      .then(response => response.json())
-      .then(data => setAppointments(data))
-      .catch(error => console.error('Error loading appointments:', error))
-  }, [])
+    if (isCollapsed || isMobile) {
+      fetchTodayStats()
+    }
+  }, [isCollapsed, isMobile])
 
-  const getTypeIcon = (type, icon) => {
-    // If icon is provided in data, use it; otherwise derive from type
-    if (icon) return icon
+  // Allow view toggling on mobile (removed forced list view)
 
-    switch (type) {
-      case 'medical': return '🏥'
-      case 'medication': return '💊'
-      case 'therapy': return '🤸'
-      case 'personal': return '👥'
-      default: return '📅'
+  const fetchTodayStats = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/appointments/today`)
+      if (!response.ok) return
+
+      const result = await response.json()
+      const data = result.data || []
+
+      const total = data.length
+      const completed = data.filter(apt => apt.status === 'completed').length
+      const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
+
+      setStats({ total, completed, percentage })
+    } catch (err) {
+      console.error('Error fetching today stats:', err)
     }
   }
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'medical': return '#22c55e'
-      case 'medication': return '#8b5cf6'
-      case 'therapy': return '#f59e0b'
-      case 'personal': return '#06b6d4'
-      default: return '#64748b'
-    }
+  const handleAddClick = () => {
+    setSelectedAppointment(null)
+    setShowAddModal(true)
   }
 
-  const formatTime = (time) => {
-    return time
+  const handleAppointmentClick = (appointment) => {
+    setSelectedAppointment(appointment)
+    setShowDetailsModal(true)
   }
 
-  const getNextAppointment = () => {
-    if (appointments.length === 0) return null
-    return appointments[0]
+  const handleEditClick = (appointment) => {
+    setSelectedAppointment(appointment)
+    setShowDetailsModal(false)
+    setShowAddModal(true)
+  }
+
+  const handleModalSuccess = () => {
+    // Refresh the view by updating key
+    setRefreshKey(prev => prev + 1)
+    // Refresh stats too
+    fetchTodayStats()
   }
 
   // Collapsed desktop view
   if (isCollapsed && !isMobile) {
-    const next = getNextAppointment()
     return (
-      <div className="appointments-mini">
-        <div className="mini-header">
-          <span className="mini-icon">📅</span>
-          <span className="mini-title">Today's Schedule</span>
-          <span className="mini-count">{appointments.length} events</span>
-        </div>
-        {next && (
-          <div className="mini-content">
-            <span className="mini-time">{next.time}</span>
-            <span className="mini-text">{next.title}</span>
+      <div className="appointments-panel collapsed">
+        <div className="appointments-header">
+          <div className="appointments-header-left">
+            <h3 className="appointments-title">📅 Appointments</h3>
+            <div className="completion-badge">
+              {stats.completed}/{stats.total}
+            </div>
           </div>
-        )}
-      </div>
-    )
-  }
-
-  // Mobile layout
-  if (isMobile) {
-    const nextAppointment = getNextAppointment()
-
-    return (
-      <div className="mobile-schedule">
-        <h2>Today's Schedule</h2>
-        <div className="schedule-summary">
-          <span className="event-count">{appointments.length} events today</span>
-          {nextAppointment && (
-            <span className="next-up">
-              Next: {nextAppointment.time} - {nextAppointment.title}
-            </span>
-          )}
         </div>
-
-        {/* Current/Next Appointment Highlight */}
-        {nextAppointment && (
-          <section className="next-appointment-card">
-            <div className="appointment-header">
-              <span className="appointment-icon" style={{ color: getTypeColor(nextAppointment.type) }}>
-                {getTypeIcon(nextAppointment.type, nextAppointment.icon)}
-              </span>
-              <div className="appointment-timing">
-                <div className="appointment-time">{formatTime(nextAppointment.time)}</div>
-                <div className="time-until">Coming up</div>
-              </div>
-            </div>
-            <div className="appointment-details">
-              <h3 className="appointment-title">{nextAppointment.title}</h3>
-              {nextAppointment.location && (
-                <div className="appointment-location">
-                  <span className="location-icon">📍</span>
-                  {nextAppointment.location}
-                </div>
-              )}
-              {nextAppointment.notes && (
-                <div className="appointment-notes">{nextAppointment.notes}</div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* All Appointments List */}
-        <section className="appointments-list">
-          <h3>Today's Schedule</h3>
-          {appointments.map((appointment, index) => (
-            <div
-              key={appointment.id || index}
-              className={`appointment-item ${index === 0 ? 'current' : ''}`}
-            >
-              <div className="appointment-time-badge">
-                <div
-                  className="time-icon"
-                  style={{
-                    color: getTypeColor(appointment.type),
-                    backgroundColor: `${getTypeColor(appointment.type)}20`
-                  }}
-                >
-                  {getTypeIcon(appointment.type, appointment.icon)}
-                </div>
-                <div className="appointment-time">{formatTime(appointment.time)}</div>
-              </div>
-
-              <div className="appointment-content">
-                <div className="appointment-title">{appointment.title}</div>
-                {appointment.location && (
-                  <div className="appointment-location">
-                    <span className="location-icon">📍</span>
-                    {appointment.location}
-                  </div>
-                )}
-                {appointment.notes && (
-                  <div className="appointment-notes">{appointment.notes}</div>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {appointments.length === 0 && (
-            <div className="no-appointments">
-              <span className="empty-icon">📅</span>
-              <p>No appointments scheduled for today</p>
-            </div>
-          )}
-        </section>
       </div>
     )
   }
 
-  // Desktop full layout
   return (
-    <div className="appointments-card">
-      <div className="card-header">
-        <h2 className="card-title">Today's Schedule</h2>
-        <span className="event-count">{appointments.length} events</span>
-      </div>
-      <div className="appointments-list">
-        {appointments.map((apt, index) => (
-          <div key={index} className="appointment-item">
-            <div className="appointment-time-badge">
-              <div className="time-icon">{getTypeIcon(apt.type, apt.icon)}</div>
-            </div>
-            <div className="appointment-details">
-              <div className="appointment-time">{apt.time}</div>
-              <div className="appointment-title">{apt.title}</div>
-              {apt.location && (
-                <div className="appointment-location">
-                  <span className="location-icon">📍</span>
-                  {apt.location}
-                </div>
-              )}
-              {apt.notes && (
-                <div className="appointment-notes">{apt.notes}</div>
-              )}
-            </div>
+    <div className="appointments-panel">
+      {/* Header */}
+      <header className="appointments-header">
+        <div className="appointments-header-left">
+          <h2 className="appointments-title">📅 Appointments</h2>
+          <div className="view-toggle">
+            <button
+              className={`toggle-button ${view === 'list' ? 'active' : ''}`}
+              onClick={() => setView('list')}
+            >
+              📋 List
+            </button>
+            <button
+              className={`toggle-button ${view === 'calendar' ? 'active' : ''}`}
+              onClick={() => setView('calendar')}
+            >
+              📅 Calendar
+            </button>
           </div>
-        ))}
+        </div>
+        <button className="add-appointment-button" onClick={handleAddClick}>
+          + Add
+        </button>
+      </header>
+
+      {/* Content */}
+      <div className="appointments-content">
+        {view === 'list' ? (
+          <TodaySchedule
+            key={`list-${refreshKey}`}
+            onAppointmentClick={handleAppointmentClick}
+          />
+        ) : (
+          <AppointmentCalendar
+            key={`calendar-${refreshKey}`}
+            onAppointmentClick={handleAppointmentClick}
+          />
+        )}
       </div>
+
+      {/* Modals */}
+      {showAddModal && (
+        <AddAppointmentModal
+          appointment={selectedAppointment}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handleModalSuccess}
+        />
+      )}
+
+      {showDetailsModal && selectedAppointment && (
+        <AppointmentDetailsModal
+          appointment={selectedAppointment}
+          onClose={() => setShowDetailsModal(false)}
+          onEdit={handleEditClick}
+          onDelete={handleModalSuccess}
+        />
+      )}
     </div>
   )
 }

@@ -284,15 +284,17 @@ CREATE TABLE IF NOT EXISTS appointments (
     title           TEXT NOT NULL,
     description     TEXT,
     location        TEXT,
-    appointment_type TEXT,          -- 'doctor', 'therapy', 'lab', 'personal', etc.
+    appointment_type TEXT DEFAULT 'personal',          -- 'doctor', 'therapy', 'lab', 'dental', 'vision', 'pharmacy', 'exercise', 'social', 'personal', 'other'
     provider_name   TEXT,
     provider_phone  TEXT,
     starts_at       DATETIME NOT NULL,
     ends_at         DATETIME,
+    all_day         INTEGER DEFAULT 0,         -- 1 = all-day event
     reminder_min    INTEGER DEFAULT 60,  -- Minutes before to remind
     is_recurring    INTEGER DEFAULT 0,
     recurrence_rule TEXT,           -- iCal RRULE format
-    status          TEXT DEFAULT 'scheduled',  -- 'scheduled', 'completed', 'cancelled'
+    status          TEXT DEFAULT 'scheduled',  -- 'scheduled', 'completed', 'cancelled', 'missed'
+    completed_at    DATETIME,                  -- When marked complete
     notes           TEXT,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -300,6 +302,11 @@ CREATE TABLE IF NOT EXISTS appointments (
 
 CREATE INDEX idx_appointments_user_date ON appointments(user_id, starts_at);
 CREATE INDEX idx_appointments_upcoming ON appointments(starts_at) WHERE status = 'scheduled';
+CREATE INDEX idx_appointments_status ON appointments(status, starts_at);
+
+-- Add missing columns to existing appointments table (migration-safe)
+-- SQLite doesn't have IF NOT EXISTS for columns, so we use conditional logic in the app
+-- These are here for reference and will be handled by the app on startup
 
 -- ============================================================================
 -- BLE DEVICES

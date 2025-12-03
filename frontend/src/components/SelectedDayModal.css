@@ -1,0 +1,178 @@
+/* ============================================================================
+   SELECTED DAY MODAL STYLES
+   ============================================================================ */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+  overflow-y: auto;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.selected-day-modal {
+  background: linear-gradient(180deg, rgba(30, 30, 45, 0.98) 0%, rgba(20, 20, 30, 0.98) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  width: 100%;
+  max-width: 500px;
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+  margin: auto;
+  position: relative;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.selected-day-modal .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.2);
+  background: rgba(74, 158, 255, 0.05);
+}
+
+.selected-day-modal .modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-light, white);
+}
+
+.selected-day-modal .close-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selected-day-modal .close-button:hover {
+  background: rgba(255, 100, 100, 0.2);
+  color: #ff6b6b;
+}
+
+/* Content */
+.selected-day-modal .modal-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.selected-day-modal .modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.selected-day-modal .modal-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.selected-day-modal .modal-content::-webkit-scrollbar-thumb {
+  background: rgba(74, 158, 255, 0.3);
+  border-radius: 3px;
+}
+
+.selected-day-modal .modal-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 158, 255, 0.5);
+}
+
+/* Empty State */
+.selected-day-modal .empty-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.selected-day-modal .empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.selected-day-modal .empty-day p {
+  font-size: 15px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  margin: 0;
+}
+
+/* Appointments List */
+.selected-day-modal .day-appointments {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .selected-day-modal {
+    max-width: 100%;
+    max-height: calc(100vh - 20px);
+  }
+
+  .selected-day-modal .modal-header {
+    padding: 16px 18px;
+  }
+
+  .selected-day-modal .modal-title {
+    font-size: 16px;
+  }
+
+  .selected-day-modal .modal-content {
+    padding: 16px;
+  }
+
+  .selected-day-modal .empty-day {
+    padding: 40px 16px;
+  }
+
+  .selected-day-modal .empty-icon {
+    font-size: 36px;
+  }
+
+  .selected-day-modal .empty-day p {
+    font-size: 14px;
+  }
+}

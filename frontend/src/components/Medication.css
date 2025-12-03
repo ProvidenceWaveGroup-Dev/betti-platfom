@@ -98,6 +98,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .medications-list::-webkit-scrollbar {
@@ -122,16 +123,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: 14px 16px;
+  min-height: 70px;
   background: rgba(10, 10, 20, 0.5);
   border-radius: 12px;
-  border-left: 4px solid #4a9eff;
+  border-left: 3px solid #4a9eff;
   transition: all 0.3s ease;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .medication-item:hover {
   background: rgba(20, 20, 30, 0.7);
-  transform: translateX(4px);
+  transform: translateX(2px);
 }
 
 .medication-item.completed {
@@ -148,51 +152,60 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 
 .med-icon {
-  font-size: 24px;
+  font-size: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .med-details {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
+  min-width: 0;
 }
 
 .med-name {
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 18px;
+  font-weight: 600;
   color: var(--text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .med-time {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-muted);
   font-family: 'Courier New', monospace;
 }
 
 .med-button {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   border: 2px solid transparent;
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .med-button:hover {
@@ -209,6 +222,17 @@
   border-color: #4CAF50;
   background: rgba(76, 175, 80, 0.2);
   color: #4CAF50;
+}
+
+.check-icon {
+  color: #4ade80;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.circle-icon {
+  color: #4a9eff;
+  font-size: 20px;
 }
 
 .completion-message {
@@ -245,7 +269,7 @@
    ========================================================================= */
 
 .med-dosage {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 
@@ -278,9 +302,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
+  padding: 14px 16px;
+  min-height: 70px;
   background: rgba(139, 92, 246, 0.1);
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 8px;
 }
 
@@ -291,18 +316,18 @@
 }
 
 .prn-name {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 18px;
+  font-weight: 600;
   color: var(--text-light);
 }
 
 .prn-dosage {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 
 .prn-limit {
-  font-size: 11px;
+  font-size: 12px;
   color: #8b5cf6;
 }
 
@@ -334,7 +359,6 @@
   gap: 12px;
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid rgba(74, 158, 255, 0.1);
 }
 
 .action-button {
@@ -1186,7 +1210,7 @@
   background: rgba(0, 0, 0, 0.2);
   border-radius: 12px;
   padding: 16px;
-  border-left: 4px solid #4a9eff;
+  border-left: 3px solid #4a9eff;
 }
 
 .overview-medication.variable {
@@ -1344,7 +1368,7 @@
   background: rgba(139, 92, 246, 0.1);
   border-radius: 12px;
   padding: 16px;
-  border-left: 4px solid #8b5cf6;
+  border-left: 3px solid #8b5cf6;
 }
 
 .overview-prn-section h4 {

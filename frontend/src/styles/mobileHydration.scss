@@ -185,19 +185,19 @@
 .sip-actions {
   margin-bottom: 24px;
 
-  .sip-buttons {
+  .sip-buttons-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 12px;
 
     .sip-button {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
       background: rgba(255, 255, 255, 0.05);
       border: 2px solid rgba(255, 255, 255, 0.1);
       border-radius: 16px;
-      padding: 20px 16px;
+      padding: 16px 12px;
       color: white;
       cursor: pointer;
       transition: all 0.3s ease;
@@ -226,8 +226,15 @@
         }
       }
 
+      &.quick-add {
+        &:hover {
+          border-color: rgba(168, 85, 247, 0.5);
+          background: rgba(168, 85, 247, 0.1);
+        }
+      }
+
       .sip-icon {
-        font-size: 32px;
+        font-size: 28px;
         flex-shrink: 0;
       }
 
@@ -236,13 +243,13 @@
         text-align: left;
 
         .sip-label {
-          font-size: 16px;
+          font-size: 14px;
           font-weight: 600;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         }
 
         .sip-size {
-          font-size: 14px;
+          font-size: 12px;
           color: rgba(255, 255, 255, 0.7);
         }
       }

@@ -10,6 +10,8 @@ import bleRoutes from './routes/ble.js'
 import vitalsRoutes from './routes/vitals.js'
 import fitnessRoutes from './routes/fitness.js'
 import medicationsRoutes from './routes/medications.js'
+import appointmentsRoutes from './routes/appointments.js'
+import hydrationRoutes from './routes/hydration.js'
 import bleScanner from './services/bleScanner.js'
 import bleHealthProcessor from './services/bleHealthProcessor.js'
 import bleFitnessProcessor from './services/bleFitnessProcessor.js'
@@ -205,6 +207,8 @@ app.use('/api/ble', bleRoutes)
 app.use('/api/vitals', vitalsRoutes)
 app.use('/api/fitness', fitnessRoutes)
 app.use('/api/medications', medicationsRoutes)
+app.use('/api/appointments', appointmentsRoutes)
+app.use('/api/hydration', hydrationRoutes)
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

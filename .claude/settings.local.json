@@ -50,7 +50,10 @@
       "Bash(cmd /c \"taskkill /F /PID 178552\")",
       "Bash(find:*)",
       "Bash(cmd /c \"taskkill /F /PID 354652\")",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(set VIDEO_PORT=8080)",
+      "Bash(cat:*)",
+      "Bash(sqlite3:*)"
     ],
     "deny": [],
     "ask": []

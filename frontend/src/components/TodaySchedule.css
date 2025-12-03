@@ -1,0 +1,292 @@
+/* ============================================================================
+   TODAY'S SCHEDULE STYLES
+   ============================================================================ */
+
+.today-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Header */
+.schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.2);
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.calendar-icon {
+  font-size: 24px;
+}
+
+.schedule-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-light, white);
+  margin: 0;
+}
+
+.completion-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.stats-text {
+  color: var(--text-muted, rgba(255, 255, 255, 0.7));
+  font-weight: 500;
+}
+
+.stats-percentage {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-light, white);
+  background: rgba(74, 158, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+/* Progress Bar */
+.progress-section {
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #4a9eff 0%, #00d4ff 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Time Sections */
+.appointments-by-time {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.time-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.time-heading {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.appointments-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  font-size: 16px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  margin: 0;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  font-size: 16px;
+}
+
+/* Error State */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.error-state p {
+  font-size: 16px;
+  color: #ff6b6b;
+  margin: 0 0 20px 0;
+}
+
+.retry-button {
+  padding: 10px 20px;
+  background: rgba(74, 158, 255, 0.2);
+  border: 1px solid #4a9eff;
+  border-radius: 8px;
+  color: #4a9eff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retry-button:hover {
+  background: rgba(74, 158, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Completion Message */
+.completion-message {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 12px;
+  text-align: center;
+  color: #4ade80;
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.completion-icon {
+  font-size: 20px;
+}
+
+/* Scrollbar Styling */
+.today-schedule::-webkit-scrollbar {
+  width: 6px;
+}
+
+.today-schedule::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.today-schedule::-webkit-scrollbar-thumb {
+  background: rgba(74, 158, 255, 0.3);
+  border-radius: 3px;
+}
+
+.today-schedule::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 158, 255, 0.5);
+}
+
+/* ============================================================================
+   MOBILE RESPONSIVE STYLES
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .today-schedule {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  /* Header - Stack vertically on mobile */
+  .schedule-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 12px;
+  }
+
+  .header-title {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .calendar-icon {
+    font-size: 20px;
+  }
+
+  .schedule-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    white-space: normal;
+    word-wrap: break-word;
+  }
+
+  /* Stats - Full width on mobile */
+  .completion-stats {
+    width: 100%;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+
+  .stats-text {
+    font-size: 13px;
+  }
+
+  .stats-percentage {
+    font-size: 16px;
+    padding: 3px 10px;
+  }
+
+  /* Time sections */
+  .appointments-by-time {
+    gap: 20px;
+  }
+
+  .time-section {
+    gap: 10px;
+  }
+
+  .time-heading {
+    font-size: 12px;
+  }
+
+  /* Completion message */
+  .completion-message {
+    margin-top: 16px;
+    padding: 14px;
+    font-size: 14px;
+  }
+
+  .completion-icon {
+    font-size: 18px;
+  }
+}

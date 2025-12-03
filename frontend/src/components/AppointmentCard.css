@@ -1,0 +1,433 @@
+/* ============================================================================
+   APPOINTMENT CARD STYLES
+   ============================================================================ */
+
+.appointment-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(10, 10, 20, 0.5);
+  border-radius: 12px;
+  border-left: 3px solid #4a9eff;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.appointment-card:hover {
+  background: rgba(20, 20, 30, 0.7);
+  transform: translateX(2px);
+}
+
+.appointment-card.completed {
+  border-left-color: #4ade80;
+  background: rgba(76, 175, 80, 0.1);
+  opacity: 0.9;
+}
+
+.appointment-card.overdue {
+  border-left-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+}
+
+/* Time Section (Left) */
+.appointment-time-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.appointment-time {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-light, white);
+  font-family: 'Courier New', monospace;
+  text-align: center;
+}
+
+.all-day-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4a9eff;
+  background: rgba(74, 158, 255, 0.2);
+  padding: 4px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.appointment-type-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+/* Details Section (Center) */
+.appointment-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.appointment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.appointment-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-light, white);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appointment-card.completed .appointment-title {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.status-badge {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.appointment-location,
+.appointment-provider {
+  font-size: 13px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.7));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.location-icon,
+.provider-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.appointment-description {
+  font-size: 13px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.completed-time {
+  font-size: 12px;
+  color: #4ade80;
+  font-weight: 500;
+}
+
+.overdue-warning {
+  font-size: 12px;
+  color: #ff6b6b;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.warning-icon {
+  font-size: 14px;
+}
+
+/* Check Button (Right) */
+.appointment-check-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.appointment-check-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.appointment-check-button.unchecked {
+  border-color: #4a9eff;
+  color: #4a9eff;
+}
+
+.appointment-check-button.checked {
+  border-color: #4ade80;
+  background: rgba(76, 175, 80, 0.2);
+  color: #4ade80;
+  animation: checkmark 0.3s ease;
+}
+
+.check-icon {
+  color: #4ade80;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.circle-icon {
+  color: #4a9eff;
+  font-size: 20px;
+}
+
+@keyframes checkmark {
+  0% {
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ============================================================================
+   COMPACT VIEW (for calendar)
+   ============================================================================ */
+
+.appointment-card-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(10, 10, 20, 0.5);
+  border-radius: 8px;
+  border-left: 3px solid #4a9eff;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.appointment-card-compact:hover {
+  background: rgba(20, 20, 30, 0.7);
+  transform: translateX(2px);
+}
+
+.appointment-card-compact.completed {
+  border-left-color: #4ade80;
+  opacity: 0.7;
+}
+
+.compact-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.compact-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compact-time {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4a9eff;
+  font-family: 'Courier New', monospace;
+}
+
+.compact-title {
+  font-size: 12px;
+  color: var(--text-light, white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appointment-card-compact.completed .compact-title {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* ============================================================================
+   PANEL VIEW (for selected day sidebar)
+   ============================================================================ */
+
+.appointment-card-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: rgba(10, 10, 20, 0.5);
+  border-radius: 10px;
+  border-left: 3px solid #4a9eff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.appointment-card-panel:hover {
+  background: rgba(20, 20, 30, 0.7);
+  transform: translateX(2px);
+}
+
+.appointment-card-panel.completed {
+  border-left-color: #4ade80;
+  background: rgba(76, 175, 80, 0.1);
+  opacity: 0.9;
+}
+
+.appointment-card-panel.overdue {
+  border-left-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+}
+
+/* Row 1: Time + Status Badge */
+.panel-row-1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-time {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a9eff;
+  font-family: 'Courier New', monospace;
+}
+
+.panel-status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Row 2: Type Icon + Title */
+.panel-row-2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-type-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-light, white);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.appointment-card-panel.completed .panel-title {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* Row 3: Description */
+.panel-description {
+  font-size: 13px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.65));
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Row 4: Location */
+.panel-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.7));
+}
+
+.panel-location-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.panel-location-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Row 5: Completion timestamp */
+.panel-completed-time {
+  font-size: 11px;
+  color: #4ade80;
+  font-weight: 500;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Row 5: Mark Complete button */
+.panel-complete-button {
+  padding: 8px 12px;
+  background: rgba(74, 158, 255, 0.2);
+  border: 1px solid #4a9eff;
+  border-radius: 6px;
+  color: #4a9eff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 4px;
+}
+
+.panel-complete-button:hover {
+  background: rgba(74, 158, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Overdue warning */
+.panel-overdue-warning {
+  font-size: 11px;
+  color: #ff6b6b;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}

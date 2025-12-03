@@ -1513,7 +1513,7 @@ function Medication({ isCollapsed = false, variant = 'desktop', onNavigate }) {
               onClick={() => !med.taken && handleTakeMedication(med)}
               disabled={med.taken}
             >
-              {med.taken ? 'check' : 'circle'}
+              {med.taken ? <span className="check-icon">✓</span> : <span className="circle-icon">○</span>}
             </button>
           </div>
         ))}

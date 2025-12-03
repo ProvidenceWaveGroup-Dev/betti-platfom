@@ -1307,6 +1307,278 @@ export const MedicationRepo = {
   }
 }
 
+// ============================================================================
+// APPOINTMENTS REPOSITORY
+// ============================================================================
+
+export const AppointmentRepo = {
+  /**
+   * Get appointments for a date range
+   * @param {number} userId - User ID
+   * @param {string} startDate - Start date in ISO format
+   * @param {string} endDate - End date in ISO format
+   * @returns {Array} Array of appointments
+   */
+  getByDateRange(userId, startDate, endDate) {
+    const db = getDatabase()
+    return db
+      .prepare(
+        `SELECT * FROM appointments
+         WHERE user_id = ? AND starts_at BETWEEN ? AND ?
+         ORDER BY starts_at`
+      )
+      .all(userId, startDate, endDate)
+  },
+
+  /**
+   * Get today's appointments as to-do list
+   * @param {number} userId - User ID
+   * @returns {Array} Array of today's appointments
+   */
+  getToday(userId) {
+    const db = getDatabase()
+    // Get all appointments that:
+    // 1. Start today, OR
+    // 2. Are recurring and started before or on today
+    return db
+      .prepare(
+        `SELECT * FROM appointments
+         WHERE user_id = ?
+           AND (
+             date(starts_at) = date('now')
+             OR (is_recurring = 1 AND date(starts_at) <= date('now'))
+           )
+         ORDER BY all_day DESC, starts_at`
+      )
+      .all(userId)
+  },
+
+  /**
+   * Get appointments for a specific month (for calendar view)
+   * @param {number} userId - User ID
+   * @param {number} year - Year (e.g., 2025)
+   * @param {number} month - Month (1-12)
+   * @returns {Array} Array of appointments for the month
+   */
+  getByMonth(userId, year, month) {
+    const db = getDatabase()
+    const startOfMonth = `${year}-${String(month).padStart(2, '0')}-01`
+    const endOfMonth = `${year}-${String(month).padStart(2, '0')}-31`
+
+    // Get all appointments that:
+    // 1. Start within this month, OR
+    // 2. Are recurring and started before or during this month
+    return db
+      .prepare(
+        `SELECT * FROM appointments
+         WHERE user_id = ?
+           AND (
+             (date(starts_at) >= ? AND date(starts_at) <= ?)
+             OR (is_recurring = 1 AND date(starts_at) <= ?)
+           )
+         ORDER BY starts_at`
+      )
+      .all(userId, startOfMonth, endOfMonth, endOfMonth)
+  },
+
+  /**
+   * Get upcoming appointments
+   * @param {number} userId - User ID
+   * @param {number} days - Number of days to look ahead (default 30)
+   * @param {number} limit - Maximum number of appointments (default 20)
+   * @returns {Array} Array of upcoming appointments
+   */
+  getUpcoming(userId, days = 30, limit = 20) {
+    const db = getDatabase()
+    // Get all appointments that:
+    // 1. Start within the upcoming period, OR
+    // 2. Are recurring and started before the end of the period
+    return db
+      .prepare(
+        `SELECT * FROM appointments
+         WHERE user_id = ?
+           AND (
+             (starts_at >= datetime('now') AND starts_at <= datetime('now', '+' || ? || ' days'))
+             OR (is_recurring = 1 AND starts_at <= datetime('now', '+' || ? || ' days'))
+           )
+           AND status = 'scheduled'
+         ORDER BY starts_at
+         LIMIT ?`
+      )
+      .all(userId, days, days, limit)
+  },
+
+  /**
+   * Get a single appointment by ID
+   * @param {number} id - Appointment ID
+   * @returns {Object|null} Appointment or null if not found
+   */
+  getById(id) {
+    const db = getDatabase()
+    return db.prepare('SELECT * FROM appointments WHERE id = ?').get(id) || null
+  },
+
+  /**
+   * Create a new appointment
+   * @param {Object} appointment - Appointment data
+   * @returns {Object} Created appointment with id
+   */
+  create(appointment) {
+    const db = getDatabase()
+    const stmt = db.prepare(
+      `INSERT INTO appointments (
+        user_id, title, description, location, appointment_type,
+        provider_name, provider_phone, starts_at, ends_at, all_day,
+        reminder_min, is_recurring, recurrence_rule, notes
+      ) VALUES (
+        @user_id, @title, @description, @location, @appointment_type,
+        @provider_name, @provider_phone, @starts_at, @ends_at, @all_day,
+        @reminder_min, @is_recurring, @recurrence_rule, @notes
+      )`
+    )
+
+    const result = stmt.run({
+      user_id: appointment.user_id || 1,
+      title: appointment.title,
+      description: appointment.description || null,
+      location: appointment.location || null,
+      appointment_type: appointment.appointment_type || 'personal',
+      provider_name: appointment.provider_name || null,
+      provider_phone: appointment.provider_phone || null,
+      starts_at: appointment.starts_at,
+      ends_at: appointment.ends_at || null,
+      all_day: appointment.all_day ? 1 : 0,
+      reminder_min: appointment.reminder_min || 60,
+      is_recurring: appointment.is_recurring ? 1 : 0,
+      recurrence_rule: appointment.recurrence_rule || null,
+      notes: appointment.notes || null
+    })
+
+    return { id: result.lastInsertRowid, ...appointment }
+  },
+
+  /**
+   * Update an appointment
+   * @param {number} id - Appointment ID
+   * @param {Object} updates - Fields to update
+   * @returns {Object} Update result
+   */
+  update(id, updates) {
+    const db = getDatabase()
+
+    // Build dynamic SET clause
+    const allowedFields = [
+      'title', 'description', 'location', 'appointment_type',
+      'provider_name', 'provider_phone', 'starts_at', 'ends_at',
+      'all_day', 'reminder_min', 'is_recurring', 'recurrence_rule', 'notes', 'status'
+    ]
+
+    const fields = Object.keys(updates)
+      .filter(k => allowedFields.includes(k))
+      .map(k => `${k} = @${k}`)
+      .join(', ')
+
+    if (fields.length === 0) {
+      return { changes: 0 }
+    }
+
+    const stmt = db.prepare(
+      `UPDATE appointments
+       SET ${fields}, updated_at = CURRENT_TIMESTAMP
+       WHERE id = @id`
+    )
+
+    return stmt.run({ id, ...updates })
+  },
+
+  /**
+   * Mark an appointment as completed
+   * @param {number} id - Appointment ID
+   * @param {string} notes - Optional completion notes
+   * @returns {Object} Update result
+   */
+  complete(id, notes = null) {
+    const db = getDatabase()
+    return db
+      .prepare(
+        `UPDATE appointments
+         SET status = 'completed',
+             completed_at = CURRENT_TIMESTAMP,
+             notes = COALESCE(?, notes),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`
+      )
+      .run(notes, id)
+  },
+
+  /**
+   * Mark an appointment as scheduled again (uncheck)
+   * @param {number} id - Appointment ID
+   * @returns {Object} Update result
+   */
+  uncomplete(id) {
+    const db = getDatabase()
+    return db
+      .prepare(
+        `UPDATE appointments
+         SET status = 'scheduled',
+             completed_at = NULL,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`
+      )
+      .run(id)
+  },
+
+  /**
+   * Mark an appointment as cancelled
+   * @param {number} id - Appointment ID
+   * @param {string} reason - Optional cancellation reason
+   * @returns {Object} Update result
+   */
+  cancel(id, reason = null) {
+    const db = getDatabase()
+    return db
+      .prepare(
+        `UPDATE appointments
+         SET status = 'cancelled',
+             notes = COALESCE(?, notes),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`
+      )
+      .run(reason, id)
+  },
+
+  /**
+   * Reschedule an appointment
+   * @param {number} id - Appointment ID
+   * @param {string} starts_at - New start time
+   * @param {string} ends_at - New end time (optional)
+   * @returns {Object} Update result
+   */
+  reschedule(id, starts_at, ends_at = null) {
+    const db = getDatabase()
+    return db
+      .prepare(
+        `UPDATE appointments
+         SET starts_at = ?,
+             ends_at = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`
+      )
+      .run(starts_at, ends_at, id)
+  },
+
+  /**
+   * Delete an appointment
+   * @param {number} id - Appointment ID
+   * @returns {Object} Delete result
+   */
+  delete(id) {
+    const db = getDatabase()
+    return db.prepare('DELETE FROM appointments WHERE id = ?').run(id)
+  }
+}
+
 // Export the database instance getter as default
 export default {
   init: initDatabase,
@@ -1314,5 +1586,6 @@ export default {
   close: closeDatabase,
   isConnected: isDatabaseConnected,
   WorkoutRepo,
-  MedicationRepo
+  MedicationRepo,
+  AppointmentRepo
 }
