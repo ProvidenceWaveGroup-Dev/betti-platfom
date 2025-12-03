@@ -12,6 +12,7 @@ import fitnessRoutes from './routes/fitness.js'
 import medicationsRoutes from './routes/medications.js'
 import appointmentsRoutes from './routes/appointments.js'
 import hydrationRoutes from './routes/hydration.js'
+import nutritionRoutes from './routes/nutrition.js'
 import bleScanner from './services/bleScanner.js'
 import bleHealthProcessor from './services/bleHealthProcessor.js'
 import bleFitnessProcessor from './services/bleFitnessProcessor.js'
@@ -209,6 +210,7 @@ app.use('/api/fitness', fitnessRoutes)
 app.use('/api/medications', medicationsRoutes)
 app.use('/api/appointments', appointmentsRoutes)
 app.use('/api/hydration', hydrationRoutes)
+app.use('/api/nutrition', nutritionRoutes)
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -224,6 +226,11 @@ server.listen(PORT, HOST, () => {
   console.log(`🚀 Betti backend server running at http://${HOST}:${PORT}`)
   console.log(`📡 WebSocket server ready`)
   console.log(`🔵 Bluetooth LE scanning available`)
+
+  // Signal to PM2 that app is ready
+  if (process.send) {
+    process.send('ready')
+  }
 })
 
 // Graceful shutdown handlers

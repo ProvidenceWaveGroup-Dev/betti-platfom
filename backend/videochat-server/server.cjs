@@ -166,9 +166,53 @@ function handleClientDisconnect(ws) {
   handleLeaveRoom(ws, {});
 }
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`WebRTC signaling server running on port ${PORT}`);
-  console.log(`Access from other devices: https://[YOUR_IP]:${PORT}`);
-});
+// Graceful shutdown handler
+function shutdown(signal) {
+  console.log(`\n${signal} received. Shutting down WebRTC signaling server...`);
+
+  // Close all WebSocket connections
+  wss.clients.forEach((client) => {
+    try {
+      client.close(1000, 'Server shutting down');
+    } catch (e) {
+      // Ignore errors on close
+    }
+  });
+
+  // Close WebSocket server
+  wss.close(() => {
+    console.log('📡 WebSocket server closed');
+  });
+
+  // Close HTTP/HTTPS server
+  server.close(() => {
+    console.log('🔌 HTTP/HTTPS server closed');
+    console.log('👋 Goodbye!');
+    process.exit(0);
+  });
+
+  // Force exit after 5 seconds if graceful shutdown fails
+  setTimeout(() => {
+    console.error('⚠️ Forcing shutdown after timeout');
+    process.exit(1);
+  }, 5000);
+}
+
+if (require.main === module) {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`📹 WebRTC signaling server running on port ${PORT}`);
+    console.log(`🔒 Protocol: ${fs.existsSync(certPath) && fs.existsSync(keyPath) ? 'HTTPS' : 'HTTP'}`);
+    console.log(`💻 Access from other devices: ${fs.existsSync(certPath) && fs.existsSync(keyPath) ? 'https' : 'http'}://[YOUR_IP]:${PORT}`);
+
+    // Signal to PM2 that app is ready
+    if (process.send) {
+      process.send('ready');
+    }
+  });
+
+  // Register shutdown handlers
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+}
 
 module.exports = { server, wss, rooms };

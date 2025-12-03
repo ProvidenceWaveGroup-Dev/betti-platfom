@@ -19,13 +19,7 @@ export default defineConfig({
     },
     // Proxy configuration for ngrok and local development
     proxy: {
-      // Nutrition API (separate server on port 3002)
-      '/api/nutrition': {
-        target: 'http://localhost:3002',
-        changeOrigin: true,
-        secure: false
-      },
-      // Main backend API
+      // Main backend API (includes nutrition routes)
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,

@@ -205,13 +205,54 @@ function handleClientDisconnect(ws) {
   handleLeaveRoom(ws, {});
 }
 
+// Graceful shutdown handler
+function shutdown(signal) {
+  console.log(`\n${signal} received. Shutting down WebRTC signaling server...`);
+
+  // Close all WebSocket connections
+  wss.clients.forEach((client) => {
+    try {
+      client.close(1000, 'Server shutting down');
+    } catch (e) {
+      // Ignore errors on close
+    }
+  });
+
+  // Close WebSocket server
+  wss.close(() => {
+    console.log('📡 WebSocket server closed');
+  });
+
+  // Close HTTP server
+  server.close(() => {
+    console.log('🔌 HTTP server closed');
+    console.log('👋 Goodbye!');
+    process.exit(0);
+  });
+
+  // Force exit after 5 seconds if graceful shutdown fails
+  setTimeout(() => {
+    console.error('⚠️ Forcing shutdown after timeout');
+    process.exit(1);
+  }, 5000);
+}
+
 if (require.main === module) {
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`📹 WebRTC signaling server (ngrok-ready) running on port ${PORT}`);
     console.log(`🌐 HTTP server (ngrok provides HTTPS)`);
     console.log(`🔗 Use with ngrok: ngrok http --url=halibut-saved-gannet.ngrok-free.app ${PORT}`);
     console.log(`💻 Local access: http://localhost:${PORT}`);
+
+    // Signal to PM2 that app is ready
+    if (process.send) {
+      process.send('ready');
+    }
   });
+
+  // Register shutdown handlers
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 module.exports = { server, wss, rooms };

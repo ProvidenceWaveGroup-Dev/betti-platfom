@@ -59,6 +59,11 @@ app.get('/api/health', (req, res) => {
 app.listen(PORT, HOST, () => {
   console.log(`🥗 Nutrition API server running at http://${HOST}:${PORT}`)
   console.log(`📊 Nutrition endpoints available`)
+
+  // Signal to PM2 that app is ready
+  if (process.send) {
+    process.send('ready')
+  }
 })
 
 // Graceful shutdown
