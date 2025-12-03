@@ -81,8 +81,9 @@ This is an npm workspaces monorepo with a 4-server architecture:
 - **WebSocket**: Real-time bidirectional communication for sensor data updates
   - WebSocket server runs on same port as HTTP server (3001)
   - Frontend connects via `ws://${window.location.hostname}:3001`
-  - Message types: `connection`, `ble-device`, `ble-scan-status`
+  - Message types: `connection`, `ble-device`, `ble-scan-status`, `medication-reminder`, `medication-due`, `medication-late`, `vitalRecorded`
   - Auto-reconnect logic in frontend with 3-second interval
+  - Broadcasts medication reminders and vital readings in real-time
 - **Default sensor update interval**: 5000ms (configurable via SENSOR_UPDATE_INTERVAL)
 
 ### Bluetooth LE Integration
@@ -92,6 +93,19 @@ This is an npm workspaces monorepo with a 4-server architecture:
 - **Event-Driven Architecture**: BLEScanner extends EventEmitter, emitting `bleStateChange`, `bleDeviceDiscovered`, and `bleScanStatus` events
 - **WebSocket Broadcasting**: Discovered devices and scan status are broadcast to all connected clients in real-time
 - **Frontend WebSocket Client**: `frontend/src/services/websocket.js` - Singleton client with event emitter pattern
+
+### BLE Health Device Integration
+- **Health Processor**: `backend/src/services/bleHealthProcessor.js` - Processes BLE health device data
+- **Supported Devices**: Heart rate monitors, blood pressure cuffs, pulse oximeters, smart scales, thermometers, glucose monitors
+- **Standard GATT Services**: Uses standard BLE health service UUIDs (0x180D for HR, 0x1810 for BP, etc.)
+- **Debouncing**: 5-second window to prevent duplicate readings from devices that transmit rapidly
+- **Device Registration**: Supports registering known devices with addresses and types
+- **Auto-Storage**: Automatically stores vitals in SQLite database via VitalsRepo
+- **WebSocket Broadcasts**: Emits `vitalRecorded` events for real-time UI updates
+
+### BLE Fitness Data Processing
+- **Fitness Processor**: `backend/src/services/bleFitnessProcessor.js` - Similar architecture for fitness trackers
+- **Supported Metrics**: Steps, heart rate, calories, distance from fitness bands/smartwatches
 
 ## Configuration
 
@@ -103,6 +117,7 @@ Copy `backend/.env.example` to `backend/.env` before first run:
 - `CORS_ORIGIN` - Frontend URL for CORS (default: http://localhost:5173)
 - `SENSOR_UPDATE_INTERVAL` - Sensor polling interval in ms (default: 5000)
 - `VIDEO_PORT` - Video chat server port (default: 8080)
+- `MEDICATION_REMINDERS_ENABLED` - Enable medication reminder service (default: true)
 
 ### Frontend Environment Variables
 Configure `frontend/.env`:
@@ -125,6 +140,31 @@ This application is designed to run on a touchscreen-enabled device (likely Rasp
 - SSL certificates (cert.pem/key.pem) required for HTTPS in video chat server for WebRTC camera access on remote devices
 - Video chat server automatically falls back to HTTP if SSL certificates are not found (development only)
 
+## Database Architecture
+
+### SQLite Database
+The backend uses `better-sqlite3` for local-first data storage with no cloud dependency:
+- **Database File**: `backend/data/betti.db` (auto-created from schema)
+- **Schema**: `backend/src/schema/betti-schema.sql` - Comprehensive schema with users, vitals, medications, workouts, meals, hydration
+- **Database Service**: `backend/src/services/database.js` - Singleton connection manager with repository pattern exports
+- **Configuration**: WAL mode for concurrent reads, foreign keys enabled, normal synchronous mode
+
+### Repository Pattern
+The database service exports repository objects for data access:
+- **WorkoutRepo**: CRUD operations for workouts and daily activity summaries
+- **MedicationRepo**: Complex medication management with scheduling, logging, and adherence tracking
+- **VitalsRepo**: Health vitals storage (`backend/src/repos/VitalsRepo.js`)
+
+### Key Tables
+- `vital_readings` - Health metrics (BP, HR, SpO2, temp, weight, glucose) with BLE device integration
+- `medications` + `medication_schedules` + `medication_log` - Comprehensive medication tracking system
+- `workouts` + `daily_activity` - Fitness tracking with manual and BLE device sources
+- `meals` + `meal_foods` + `foods` - Nutrition tracking with food database
+- `alerts` - System notifications and reminders
+
+### Database Initialization
+The database is initialized in `backend/src/index.js` on server startup using `initDatabase()`. Schema is automatically applied if database doesn't exist.
+
 ## Important Implementation Notes
 
 ### BLE Architecture Changes
@@ -133,6 +173,23 @@ The project recently transitioned from using `bluetoothctl` command-line interfa
 - **State Management**: Noble handles Bluetooth adapter state changes (`poweredOn`, `poweredOff`, etc.)
 - **Real-time Discovery**: Device discovery happens through Noble's event system rather than parsing command output
 - **Error Handling**: Improved error handling for Bluetooth state and scanning failures
+
+### Medication Reminder System
+A sophisticated background service for medication adherence:
+- **Service**: `backend/src/services/medicationReminder.js` - EventEmitter-based singleton
+- **Check Interval**: Every 60 seconds
+- **Reminder Window**: 5 minutes before scheduled time
+- **Late Threshold**: 30 minutes after scheduled time marks medication as "late"
+- **WebSocket Events**: Broadcasts `medication-reminder`, `medication-due`, `medication-late` events
+- **Alert Storage**: Creates alerts in database for notification history
+- **Deduplication**: Tracks sent reminders to avoid duplicates within 24 hours
+- **Enable/Disable**: Controlled via `MEDICATION_REMINDERS_ENABLED` environment variable (default: true)
+
+The service integrates with the medication scheduling system to support:
+- Daily medications at specific times
+- Day-specific schedules (e.g., Mon/Wed/Fri)
+- Interval-based schedules (e.g., every 2 days)
+- PRN (as-needed) medications with daily limits
 
 ### Development Data
 - `frontend/src/data/appointments.json` - Static appointment data for development

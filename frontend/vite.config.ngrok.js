@@ -31,9 +31,9 @@ export default defineConfig({
         ws: true,
         rewrite: (path) => path.replace(/^\/ws/, '')
       },
-      // Video chat WebSocket signaling (HTTPS - video server has SSL certs)
+      // Video chat WebSocket signaling (HTTP - ngrok provides HTTPS)
       '/video': {
-        target: 'https://localhost:8080',
+        target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
         ws: true,
