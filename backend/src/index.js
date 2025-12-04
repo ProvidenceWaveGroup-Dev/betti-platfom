@@ -31,7 +31,7 @@ try {
   process.exit(1)
 }
 
-// Check for paired BLE devices and start connection manager if found
+// Check for paired BLE devices and start connection manager when Bluetooth is ready
 try {
   const pairedDevices = BleDevicesRepo.findPaired()
   if (pairedDevices.length > 0) {
@@ -39,7 +39,20 @@ try {
     pairedDevices.forEach(device => {
       console.log(`   - ${device.name} (${device.macAddress})`)
     })
-    bleConnectionManager.start()
+
+    // Wait for Bluetooth to be powered on before starting connection manager
+    bleScanner.once('bleStateChange', (state) => {
+      if (state === 'poweredOn') {
+        console.log('🔵 Bluetooth powered on, starting connection manager...')
+        bleConnectionManager.start()
+      }
+    })
+
+    // If already powered on, start immediately
+    if (bleScanner.bluetoothState === 'poweredOn') {
+      console.log('🔵 Bluetooth already powered on, starting connection manager...')
+      bleConnectionManager.start()
+    }
   }
 } catch (error) {
   console.error('⚠️ Error checking paired devices:', error.message)
