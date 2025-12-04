@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react'
 import AppointmentCard from './AppointmentCard'
 import './TodaySchedule.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-
 /**
  * Today's Schedule Component
  * Displays today's appointments as a to-do list with completion tracking
@@ -24,7 +22,7 @@ function TodaySchedule({ onAppointmentClick }) {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`${API_URL}/api/appointments/today`)
+      const response = await fetch('/api/appointments/today')
       if (!response.ok) throw new Error('Failed to fetch appointments')
 
       const result = await response.json()
@@ -53,7 +51,7 @@ function TodaySchedule({ onAppointmentClick }) {
         body.instance_date = appointment.recurring_instance_date
       }
 
-      const response = await fetch(`${API_URL}/api/appointments/${appointment.id}/complete`, {
+      const response = await fetch(`/api/appointments/${appointment.id}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -78,7 +76,7 @@ function TodaySchedule({ onAppointmentClick }) {
         body.instance_date = appointment.recurring_instance_date
       }
 
-      const response = await fetch(`${API_URL}/api/appointments/${appointment.id}/uncomplete`, {
+      const response = await fetch(`/api/appointments/${appointment.id}/uncomplete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)

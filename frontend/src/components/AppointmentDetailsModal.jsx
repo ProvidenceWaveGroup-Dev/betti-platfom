@@ -3,8 +3,6 @@ import { getAppointmentType, getStatusInfo } from '../constants/appointmentTypes
 import { formatRecurrenceRule } from '../constants/recurrenceTypes'
 import './AppointmentDetailsModal.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-
 /**
  * Appointment Details Modal
  * Full details view with edit, delete, and status actions
@@ -50,7 +48,7 @@ function AppointmentDetailsModal({ appointment, onClose, onEdit, onDelete }) {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`${API_URL}/api/appointments/${appointment.id}`, {
+      const response = await fetch(`/api/appointments/${appointment.id}`, {
         method: 'DELETE'
       })
 
@@ -78,7 +76,7 @@ function AppointmentDetailsModal({ appointment, onClose, onEdit, onDelete }) {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`${API_URL}/api/appointments/${appointment.id}/cancel`, {
+      const response = await fetch(`/api/appointments/${appointment.id}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       })

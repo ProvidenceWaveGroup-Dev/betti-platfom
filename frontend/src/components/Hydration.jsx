@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react'
 import './Hydration.css'
 import '../styles/mobileHydration.scss'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-
 function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
   // Hydration tracking state
   const [todayIntake, setTodayIntake] = useState(0) // in fl oz
@@ -32,7 +30,7 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
       setLoading(true)
 
       // Fetch today's summary
-      const response = await fetch(`${API_URL}/api/hydration/today`)
+      const response = await fetch('/api/hydration/today')
       if (!response.ok) throw new Error('Failed to fetch hydration data')
 
       const result = await response.json()
@@ -72,7 +70,7 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
         const data = JSON.parse(savedData)
         if (data.todayIntake > 0) {
           // Log the total intake as a single entry
-          await fetch(`${API_URL}/api/hydration/log`, {
+          await fetch('/api/hydration/log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -94,7 +92,7 @@ function Hydration({ isCollapsed = false, variant = 'desktop', onNavigate }) {
   // Log water intake
   const logIntake = async (amount_oz) => {
     try {
-      const response = await fetch(`${API_URL}/api/hydration/log`, {
+      const response = await fetch('/api/hydration/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

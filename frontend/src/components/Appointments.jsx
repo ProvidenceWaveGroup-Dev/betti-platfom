@@ -5,8 +5,6 @@ import AddAppointmentModal from './AddAppointmentModal'
 import AppointmentDetailsModal from './AppointmentDetailsModal'
 import './Appointments.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-
 /**
  * Appointments Panel Component
  * Main panel with view toggle between Calendar and Today's Schedule
@@ -33,7 +31,7 @@ function Appointments({ isCollapsed = false, variant = 'desktop' }) {
 
   const fetchTodayStats = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/appointments/today`)
+      const response = await fetch('/api/appointments/today')
       if (!response.ok) return
 
       const result = await response.json()

@@ -10,8 +10,6 @@ import {
 } from '../constants/recurrenceTypes'
 import './AddAppointmentModal.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-
 /**
  * Add/Edit Appointment Modal
  * Form for creating or editing appointments
@@ -134,8 +132,8 @@ function AddAppointmentModal({ appointment = null, onClose, onSuccess }) {
       setLoading(true)
 
       const url = isEdit
-        ? `${API_URL}/api/appointments/${appointment.id}`
-        : `${API_URL}/api/appointments`
+        ? `/api/appointments/${appointment.id}`
+        : '/api/appointments'
 
       const method = isEdit ? 'PUT' : 'POST'
 

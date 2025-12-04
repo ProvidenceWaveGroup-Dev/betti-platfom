@@ -4,8 +4,6 @@ import SelectedDayModal from './SelectedDayModal'
 import { getAppointmentType } from '../constants/appointmentTypes'
 import './AppointmentCalendar.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-
 /**
  * Appointment Calendar Component
  * Calendar grid view with month navigation and selected day detail panel
@@ -41,7 +39,7 @@ function AppointmentCalendar({ onAppointmentClick }) {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`${API_URL}/api/appointments/month/${year}/${month + 1}`)
+      const response = await fetch(`/api/appointments/month/${year}/${month + 1}`)
       if (!response.ok) throw new Error('Failed to fetch appointments')
 
       const result = await response.json()
@@ -63,7 +61,7 @@ function AppointmentCalendar({ onAppointmentClick }) {
         body.instance_date = appointment.recurring_instance_date
       }
 
-      const response = await fetch(`${API_URL}/api/appointments/${appointment.id}/complete`, {
+      const response = await fetch(`/api/appointments/${appointment.id}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -86,7 +84,7 @@ function AppointmentCalendar({ onAppointmentClick }) {
         body.instance_date = appointment.recurring_instance_date
       }
 
-      const response = await fetch(`${API_URL}/api/appointments/${appointment.id}/uncomplete`, {
+      const response = await fetch(`/api/appointments/${appointment.id}/uncomplete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
