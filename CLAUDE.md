@@ -35,6 +35,23 @@ npm run start:frontend        # Start frontend in production mode
 npm run start:backend         # Start backend in production mode
 ```
 
+### Production (PM2)
+```bash
+npm run pm2:start             # Start all servers with PM2
+npm run pm2:stop              # Stop all servers
+npm run pm2:restart           # Restart all servers
+npm run pm2:logs              # View combined logs
+npm run pm2:monit             # Interactive monitoring dashboard
+npm run pm2:status            # Check process status
+```
+
+### Development with ngrok (external access/testing)
+```bash
+npm run dev:ngrok             # Run all servers with ngrok tunneling
+npm run dev:frontend:ngrok    # Frontend with ngrok only
+npm run dev:video:ngrok       # Video server with ngrok only
+```
+
 ## Architecture
 
 ### Workspace Structure
@@ -107,6 +124,14 @@ This is an npm workspaces monorepo with a 4-server architecture:
 - **Fitness Processor**: `backend/src/services/bleFitnessProcessor.js` - Similar architecture for fitness trackers
 - **Supported Metrics**: Steps, heart rate, calories, distance from fitness bands/smartwatches
 
+### BLE Connection Manager
+- **Service**: `backend/src/services/bleConnectionManager.js` - Background service for persistent device connections
+- **Polling Interval**: 15 seconds - continuous scanning for on-demand advertising devices (e.g., UA-651BLE)
+- **Connection Flow**: Poll → Scan (30s) → Connect → Discover Services → Subscribe to Characteristics
+- **Blood Pressure GATT**: Service UUID `1810`, Characteristic UUID `2a35`
+- **Events**: Emits `connection-status`, `connection-error`, `bp-data-received`
+- **Singleton Pattern**: Exports singleton instance for consistent state management
+
 ## Configuration
 
 ### Backend Environment Variables
@@ -154,9 +179,17 @@ The database service exports repository objects for data access:
 - **WorkoutRepo**: CRUD operations for workouts and daily activity summaries
 - **MedicationRepo**: Complex medication management with scheduling, logging, and adherence tracking
 - **VitalsRepo**: Health vitals storage (`backend/src/repos/VitalsRepo.js`)
+- **BleDevicesRepo**: BLE device management (`backend/src/repos/BleDevicesRepo.js`)
+  - MAC normalization: Strips separators and lowercases (e.g., `A1:B2:C3:D4:E5:F6` → `a1b2c3d4e5f6`)
+  - Pairing/trusting management with single-device constraint enforcement
+  - Device types: `blood_pressure`, `heart_rate`, `scale`, `glucose`, `thermometer`, `unknown`
+
+### Single-User Mode
+The application currently operates in single-user mode with `DEFAULT_USER_ID = 1` for all device assignments and data storage.
 
 ### Key Tables
 - `vital_readings` - Health metrics (BP, HR, SpO2, temp, weight, glucose) with BLE device integration
+- `ble_devices` - BLE device registry with pairing status and MAC normalization
 - `medications` + `medication_schedules` + `medication_log` - Comprehensive medication tracking system
 - `workouts` + `daily_activity` - Fitness tracking with manual and BLE device sources
 - `meals` + `meal_foods` + `foods` - Nutrition tracking with food database
@@ -222,12 +255,6 @@ The desktop layout uses a sophisticated panel state management system in `fronte
 - **Dynamic Layouts**: Automatic panel state management when switching between views
 
 ## Development Notes
-
-### Project Roadmap
-See `TODO.md` for a comprehensive list of planned features, enhancements, and future development priorities organized by category and priority level.
-
-### Testing and Linting
-This project currently does not have configured linting (ESLint) or testing frameworks. The backend `package.json` includes a placeholder test script that exits with an error.
 
 ### Source Code Location
 

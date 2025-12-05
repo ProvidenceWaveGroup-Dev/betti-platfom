@@ -13,6 +13,8 @@ export default defineConfig({
     host: true,
     strictPort: true,
     allowedHosts: ['halibut-saved-gannet.ngrok-free.app'],
+    // Disable HMR when running through ngrok to reduce HTTP requests
+    hmr: isNgrokMode ? false : true,
     // Add headers to help with ngrok
     headers: {
       'ngrok-skip-browser-warning': 'true'

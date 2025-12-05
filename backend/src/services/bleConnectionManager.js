@@ -7,11 +7,12 @@ import bleHealthProcessor from './bleHealthProcessor.js'
  * BLE Connection Manager
  *
  * Background service that:
- * - Polls every 15 seconds for paired devices
- * - Attempts to connect to paired devices in range
+ * - Listens for device discovery events from bleScanner
+ * - Immediately connects when a paired device is discovered (critical for devices like UA-651BLE that only advertise for ~30 seconds)
  * - Subscribes to blood pressure characteristics
  * - Processes notifications and stores vitals
  * - Emits connection status events
+ * - Maintains continuous scanning to catch on-demand advertisers
  */
 
 // Standard BLE GATT Service and Characteristic UUIDs
@@ -27,43 +28,146 @@ class BLEConnectionManager extends EventEmitter {
   constructor() {
     super()
 
-    this.pollingInterval = null
-    this.pollingIntervalMs = 15000 // 15 seconds
+    this.scanInterval = null
+    this.scanIntervalMs = 45000 // 45 seconds between scan starts (scan lasts 30s, so 15s gap)
     this.connectedPeripherals = new Map() // MAC -> { peripheral, characteristics, name }
-    this.connectionAttempts = new Map() // MAC -> retry count
-    this.maxReconnectAttempts = 999 // Effectively unlimited for devices that advertise on-demand
+    this.connectingDevices = new Set() // Track devices currently being connected to avoid duplicates
+    this.pairedDeviceMACs = new Set() // Normalized MACs of paired devices for quick lookup
 
     console.log('[BLEConnectionManager] Initialized')
   }
 
   /**
-   * Start the polling loop
+   * Start the connection manager
    */
   start() {
-    if (this.pollingInterval) {
+    if (this.scanInterval) {
       console.log('[BLEConnectionManager] Already running')
       return
     }
 
-    console.log(`[BLEConnectionManager] Starting with ${this.pollingIntervalMs}ms interval`)
+    console.log('[BLEConnectionManager] Starting...')
 
-    // Initial poll
-    this.poll()
+    // Load paired devices into memory for quick lookup
+    this.refreshPairedDevices()
 
-    // Set up interval
-    this.pollingInterval = setInterval(() => {
-      this.poll()
-    }, this.pollingIntervalMs)
+    // Listen for device discoveries - connect immediately when paired device found
+    bleScanner.on('bleDeviceDiscovered', (device) => this.handleDeviceDiscovered(device))
+
+    // Start continuous scanning
+    this.startContinuousScanning()
+
+    console.log('[BLEConnectionManager] Started - listening for paired devices')
   }
 
   /**
-   * Stop the polling loop and disconnect all devices
+   * Refresh the list of paired device MACs from database
+   */
+  refreshPairedDevices() {
+    const pairedDevices = BleDevicesRepo.findPaired('blood_pressure')
+    this.pairedDeviceMACs.clear()
+
+    for (const device of pairedDevices) {
+      // Normalize to uppercase without separators for comparison
+      const normalizedMAC = device.macAddress.toUpperCase().replace(/[:-]/g, '')
+      this.pairedDeviceMACs.add(normalizedMAC)
+      console.log(`[BLEConnectionManager] Watching for paired device: ${device.name} (${normalizedMAC})`)
+    }
+
+    console.log(`[BLEConnectionManager] Monitoring ${this.pairedDeviceMACs.size} paired device(s)`)
+  }
+
+  /**
+   * Start continuous scanning loop
+   */
+  startContinuousScanning() {
+    // Start first scan immediately
+    this.triggerScan()
+
+    // Set up interval for subsequent scans
+    this.scanInterval = setInterval(() => {
+      this.triggerScan()
+    }, this.scanIntervalMs)
+  }
+
+  /**
+   * Trigger a BLE scan if not already scanning
+   */
+  async triggerScan() {
+    if (bleScanner.isScanning) {
+      console.log('[BLEConnectionManager] Scan already in progress')
+      return
+    }
+
+    console.log('[BLEConnectionManager] Starting BLE scan...')
+    const result = await bleScanner.startScan()
+
+    if (!result.success) {
+      console.error(`[BLEConnectionManager] Failed to start scan: ${result.message}`)
+    }
+  }
+
+  /**
+   * Handle device discovery - connect immediately if it's a paired device
+   * This is the key change: we don't wait for scan to complete
+   */
+  async handleDeviceDiscovered(device) {
+    // Normalize the discovered device's MAC for comparison
+    const normalizedMAC = device.address.replace(/[:-]/g, '').toUpperCase()
+
+    // Check if this is a paired device we're watching for
+    if (!this.pairedDeviceMACs.has(normalizedMAC)) {
+      return // Not a paired device, ignore
+    }
+
+    console.log(`[BLEConnectionManager] 🎯 Paired device discovered: ${device.name} (${device.address})`)
+
+    // Check if already connected
+    if (this.isConnectedByNormalizedMAC(normalizedMAC)) {
+      console.log(`[BLEConnectionManager] ${device.name} already connected`)
+      return
+    }
+
+    // Check if already connecting
+    if (this.connectingDevices.has(normalizedMAC)) {
+      console.log(`[BLEConnectionManager] ${device.name} connection already in progress`)
+      return
+    }
+
+    // Connect immediately - don't wait!
+    this.connectingDevices.add(normalizedMAC)
+
+    try {
+      await this.connectToDevice(device.address, device.name)
+    } finally {
+      this.connectingDevices.delete(normalizedMAC)
+    }
+  }
+
+  /**
+   * Check if device is connected by normalized MAC
+   */
+  isConnectedByNormalizedMAC(normalizedMAC) {
+    for (const [mac] of this.connectedPeripherals) {
+      const connectedNormalized = mac.toUpperCase().replace(/[:-]/g, '')
+      if (connectedNormalized === normalizedMAC) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Stop the connection manager
    */
   stop() {
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval)
-      this.pollingInterval = null
+    if (this.scanInterval) {
+      clearInterval(this.scanInterval)
+      this.scanInterval = null
     }
+
+    // Remove event listener
+    bleScanner.removeAllListeners('bleDeviceDiscovered')
 
     // Disconnect all connected devices
     for (const [mac] of this.connectedPeripherals) {
@@ -74,56 +178,11 @@ class BLEConnectionManager extends EventEmitter {
   }
 
   /**
-   * Poll for paired devices and attempt connections
-   */
-  async poll() {
-    try {
-      console.log('[BLEConnectionManager] Polling for paired devices...')
-
-      // Get all paired blood pressure devices
-      const pairedDevices = BleDevicesRepo.findPaired('blood_pressure')
-
-      if (pairedDevices.length === 0) {
-        console.log('[BLEConnectionManager] No paired devices found')
-        return
-      }
-
-      console.log(`[BLEConnectionManager] Found ${pairedDevices.length} paired device(s)`)
-
-      for (const device of pairedDevices) {
-        const { macAddress, name } = device
-
-        // Skip if already connected
-        if (this.connectedPeripherals.has(macAddress)) {
-          console.log(`[BLEConnectionManager] ${name} (${macAddress}) already connected`)
-          continue
-        }
-
-        // Check connection attempt count
-        const attempts = this.connectionAttempts.get(macAddress) || 0
-        if (attempts >= this.maxReconnectAttempts) {
-          console.log(`[BLEConnectionManager] ${name} (${macAddress}) max connection attempts reached`)
-          continue
-        }
-
-        // Try to connect
-        await this.connectToDevice(macAddress, name)
-      }
-    } catch (error) {
-      console.error('[BLEConnectionManager] Error in poll:', error)
-    }
-  }
-
-  /**
    * Connect to a BLE device
    */
   async connectToDevice(macAddress, name = 'Unknown Device') {
     try {
-      console.log(`[BLEConnectionManager] Attempting to connect to ${name} (${macAddress})...`)
-
-      // Increment connection attempt counter
-      const attempts = (this.connectionAttempts.get(macAddress) || 0) + 1
-      this.connectionAttempts.set(macAddress, attempts)
+      console.log(`[BLEConnectionManager] Connecting to ${name} (${macAddress})...`)
 
       // Emit connecting status
       this.emit('connection-status', {
@@ -133,43 +192,26 @@ class BLEConnectionManager extends EventEmitter {
       })
 
       // Get peripheral from scanner cache
-      let peripheral = bleScanner.getPeripheralByMac(macAddress)
+      const peripheral = bleScanner.getPeripheralByMac(macAddress)
+
       if (!peripheral) {
-        console.log(`[BLEConnectionManager] ${name} not in scanner cache, triggering scan...`)
-
-        // Trigger a scan to discover the device
-        const scanResult = await bleScanner.startScan()
-        if (!scanResult.success) {
-          throw new Error(`Cannot scan for device: ${scanResult.message}`)
-        }
-
-        // Wait for scan to complete (30 seconds)
-        await new Promise(resolve => setTimeout(resolve, 31000))
-
-        // Try to get peripheral again
-        peripheral = bleScanner.getPeripheralByMac(macAddress)
-        if (!peripheral) {
-          throw new Error('Device not in range (not found after scan)')
-        }
-
-        // Device was discovered! Reset connection attempts
-        console.log(`[BLEConnectionManager] ${name} discovered in scan, resetting connection attempts`)
-        this.connectionAttempts.delete(macAddress)
-      } else {
-        // Device already in cache, reset attempts since it's available
-        console.log(`[BLEConnectionManager] ${name} found in cache, resetting connection attempts`)
-        this.connectionAttempts.delete(macAddress)
+        throw new Error('Peripheral not found in cache')
       }
 
-      // Check if already connected
-      if (peripheral.state === 'connected') {
-        console.log(`[BLEConnectionManager] ${name} already connected, using existing connection`)
-      } else {
-        // Connect to peripheral
+      console.log(`[BLEConnectionManager] Peripheral found, state: ${peripheral.state}`)
+
+      // Stop scanning before connecting (Noble requirement on some platforms)
+      if (bleScanner.isScanning) {
+        console.log('[BLEConnectionManager] Stopping scan for connection...')
+        await bleScanner.stopScan()
+      }
+
+      // Connect if not already connected
+      if (peripheral.state !== 'connected') {
         await new Promise((resolve, reject) => {
           const timeout = setTimeout(() => {
-            reject(new Error('Connection timeout'))
-          }, 10000) // 10 second timeout
+            reject(new Error('Connection timeout (10s)'))
+          }, 10000)
 
           peripheral.connect((error) => {
             clearTimeout(timeout)
@@ -181,7 +223,9 @@ class BLEConnectionManager extends EventEmitter {
           })
         })
 
-        console.log(`[BLEConnectionManager] Connected to ${name}`)
+        console.log(`[BLEConnectionManager] ✓ Connected to ${name}`)
+      } else {
+        console.log(`[BLEConnectionManager] ${name} already connected`)
       }
 
       // Discover services and characteristics
@@ -193,9 +237,6 @@ class BLEConnectionManager extends EventEmitter {
         name,
         connectedAt: new Date().toISOString()
       })
-
-      // Reset connection attempts on successful connection
-      this.connectionAttempts.delete(macAddress)
 
       // Update database
       BleDevicesRepo.updateLastSeen(macAddress)
@@ -217,6 +258,9 @@ class BLEConnectionManager extends EventEmitter {
           name,
           status: 'disconnected'
         })
+
+        // Resume scanning after disconnect
+        this.triggerScan()
       })
 
     } catch (error) {
@@ -233,6 +277,9 @@ class BLEConnectionManager extends EventEmitter {
         name,
         status: 'disconnected'
       })
+
+      // Resume scanning after failed connection
+      this.triggerScan()
     }
   }
 
@@ -373,9 +420,10 @@ class BLEConnectionManager extends EventEmitter {
     }
 
     return {
-      isRunning: this.pollingInterval !== null,
-      pollingIntervalMs: this.pollingIntervalMs,
+      isRunning: this.scanInterval !== null,
+      scanIntervalMs: this.scanIntervalMs,
       connectedCount: this.connectedPeripherals.size,
+      pairedDevicesMonitored: this.pairedDeviceMACs.size,
       connections
     }
   }
@@ -385,6 +433,24 @@ class BLEConnectionManager extends EventEmitter {
    */
   isConnected(macAddress) {
     return this.connectedPeripherals.has(macAddress)
+  }
+
+  /**
+   * Add a new paired device to monitor (call after pairing a new device)
+   */
+  addPairedDevice(macAddress) {
+    const normalizedMAC = macAddress.toUpperCase().replace(/[:-]/g, '')
+    this.pairedDeviceMACs.add(normalizedMAC)
+    console.log(`[BLEConnectionManager] Now monitoring paired device: ${normalizedMAC}`)
+  }
+
+  /**
+   * Remove a paired device from monitoring (call after unpairing)
+   */
+  removePairedDevice(macAddress) {
+    const normalizedMAC = macAddress.toUpperCase().replace(/[:-]/g, '')
+    this.pairedDeviceMACs.delete(normalizedMAC)
+    console.log(`[BLEConnectionManager] Stopped monitoring: ${normalizedMAC}`)
   }
 }
 

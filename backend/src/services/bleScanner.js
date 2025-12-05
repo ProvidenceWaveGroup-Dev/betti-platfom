@@ -57,7 +57,9 @@ class BLEScanner extends EventEmitter {
     // Cache peripheral object for connection (key = uppercase MAC WITHOUT separators)
     if (peripheral) {
       const cacheKey = normalizedAddress.replace(/[:-]/g, '') // Remove separators
+      console.log(`[BLEScanner] DEBUG: Caching peripheral - normalized: "${normalizedAddress}", cacheKey: "${cacheKey}"`)
       this.discoveredPeripherals.set(cacheKey, peripheral)
+      console.log(`[BLEScanner] DEBUG: Cache now has ${this.discoveredPeripherals.size} peripherals`)
     }
 
     // Check if device is new or needs updating
@@ -164,7 +166,15 @@ class BLEScanner extends EventEmitter {
   getPeripheralByMac(macAddress) {
     // Normalize to uppercase without separators to match cache key format
     const normalizedAddress = macAddress.toUpperCase().replace(/[:-]/g, '')
-    return this.discoveredPeripherals.get(normalizedAddress) || null
+    console.log(`[BLEScanner] DEBUG: getPeripheralByMac - input: "${macAddress}", normalized: "${normalizedAddress}"`)
+    console.log(`[BLEScanner] DEBUG: Cache size: ${this.discoveredPeripherals.size}`)
+    const peripheral = this.discoveredPeripherals.get(normalizedAddress)
+    if (!peripheral) {
+      console.log(`[BLEScanner] DEBUG: Lookup FAILED - available keys:`, Array.from(this.discoveredPeripherals.keys()))
+    } else {
+      console.log(`[BLEScanner] DEBUG: Lookup SUCCESS - found peripheral`)
+    }
+    return peripheral || null
   }
 
   getStatus() {
