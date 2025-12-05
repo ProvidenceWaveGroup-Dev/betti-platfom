@@ -1,13 +1,26 @@
 import { useState, useEffect } from 'react'
+import weatherApi from '../services/weatherApi'
 
 const MobileHeader = () => {
   const [currentTime, setCurrentTime] = useState(new Date())
-  const [weather, setWeather] = useState({ temp: 72, location: 'Fort Collins' })
+  const [weather, setWeather] = useState({ temperature: '--', icon: '🌡️', location: 'Longmont' })
 
   useEffect(() => {
     // Update time every minute
     const timer = setInterval(() => setCurrentTime(new Date()), 60000)
     return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    // Fetch weather immediately and then every 10 minutes
+    const fetchWeather = async () => {
+      const data = await weatherApi.getCurrentWeather()
+      setWeather(data)
+    }
+
+    fetchWeather()
+    const weatherTimer = setInterval(fetchWeather, 10 * 60 * 1000)
+    return () => clearInterval(weatherTimer)
   }, [])
 
   const formatTime = (date) => {
@@ -30,7 +43,7 @@ const MobileHeader = () => {
         </div>
         <div className="header-info">
           <span className="time">{formatTime(currentTime)}</span>
-          <span className="weather">{weather.temp}°F {weather.location}</span>
+          <span className="weather">{weather.icon} {weather.temperature}°F {weather.location}</span>
         </div>
       </div>
       <button className="hamburger-menu" aria-label="Menu">

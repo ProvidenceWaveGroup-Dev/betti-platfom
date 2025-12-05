@@ -1,14 +1,28 @@
 import React, { useState, useEffect } from 'react'
+import weatherApi from '../services/weatherApi'
 import './Header.css'
 
 function Header({ onNavigate, activeView = 'home' }) {
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [weather, setWeather] = useState({ temperature: '--', icon: '🌡️', location: 'Longmont' })
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
     return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    // Fetch weather immediately and then every 10 minutes
+    const fetchWeather = async () => {
+      const data = await weatherApi.getCurrentWeather()
+      setWeather(data)
+    }
+
+    fetchWeather()
+    const weatherTimer = setInterval(fetchWeather, 10 * 60 * 1000)
+    return () => clearInterval(weatherTimer)
   }, [])
 
   const formatTime = (date) => {
@@ -59,9 +73,9 @@ function Header({ onNavigate, activeView = 'home' }) {
 
       <div className="header-right">
         <div className="weather-compact">
-          <span className="weather-icon">☀️</span>
-          <span className="weather-temp">72°F</span>
-          <span className="weather-location">Fort Collins</span>
+          <span className="weather-icon">{weather.icon}</span>
+          <span className="weather-temp">{weather.temperature}°F</span>
+          <span className="weather-location">{weather.location}</span>
         </div>
         <div className="time-display">{formatTime(currentTime)}</div>
       </div>
