@@ -12,7 +12,7 @@ export default defineConfig({
     port: 5173,
     host: true,
     strictPort: true,
-    allowedHosts: ['halibut-saved-gannet.ngrok-free.app'],
+    allowedHosts: ['halibut-saved-gannet.ngrok-free.app', '.trycloudflare.com'],
     // Disable HMR when running through ngrok to reduce HTTP requests
     hmr: isNgrokMode ? false : true,
     // Add headers to help with ngrok
@@ -37,7 +37,7 @@ export default defineConfig({
       },
       // Video chat WebSocket signaling
       '/video': {
-        target: 'http://localhost:8080',
+        target: 'https://localhost:8080',
         changeOrigin: true,
         secure: false,
         ws: true,

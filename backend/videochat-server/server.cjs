@@ -29,8 +29,36 @@ const wss = new WebSocket.Server({ server });
 
 const rooms = new Map();
 
+// Heartbeat interval to detect stale connections
+const HEARTBEAT_INTERVAL = 30000; // 30 seconds
+
+function heartbeat() {
+  this.isAlive = true;
+}
+
+// Ping all clients periodically
+const heartbeatInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      console.log('Terminating stale connection');
+      handleClientDisconnect(ws);
+      return ws.terminate();
+    }
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, HEARTBEAT_INTERVAL);
+
+wss.on('close', () => {
+  clearInterval(heartbeatInterval);
+});
+
 wss.on('connection', (ws) => {
   console.log('Video chat client connected');
+
+  // Setup heartbeat
+  ws.isAlive = true;
+  ws.on('pong', heartbeat);
 
   ws.on('message', (message) => {
     try {

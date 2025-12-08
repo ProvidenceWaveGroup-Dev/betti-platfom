@@ -1,22 +1,25 @@
 /**
  * PM2 Ecosystem Configuration for Betti Platform
- * Manages all 4 server processes with auto-restart and graceful shutdown
+ * Manages all server processes with auto-restart and graceful shutdown
+ *
+ * Usage:
+ *   Production: pm2 start ecosystem.config.js
+ *   Development: pm2 start ecosystem.config.js --env development
  */
 
 module.exports = {
   apps: [
-    // Main Backend API Server (Express + WebSocket)
+    // Main Backend API Server (Express + WebSocket + BLE)
     {
       name: 'betti-backend',
       script: './backend/src/index.js',
       cwd: './',
+      exec_mode: 'fork',
       instances: 1,
       autorestart: true,
       watch: false,
-      max_memory_restart: '250M', // Restart if exceeds 250MB (suitable for Pi)
-      kill_timeout: 5000, // Wait 5 seconds for graceful shutdown
-      wait_ready: true, // Wait for process.send('ready')
-      listen_timeout: 10000, // Wait up to 10s for app to be ready
+      max_memory_restart: '500M',
+      kill_timeout: 5000,
       env: {
         NODE_ENV: 'production',
         PORT: 3001,
@@ -33,18 +36,17 @@ module.exports = {
       merge_logs: true
     },
 
-    // WebRTC Signaling Server (HTTPS with SSL auto-detection)
+    // WebRTC Signaling Server for Video Chat
     {
-      name: 'betti-webrtc',
+      name: 'betti-video',
       script: './backend/videochat-server/server.cjs',
       cwd: './',
+      exec_mode: 'fork',
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '200M',
       kill_timeout: 5000,
-      wait_ready: true,
-      listen_timeout: 10000,
       env: {
         NODE_ENV: 'production',
         VIDEO_PORT: 8080
@@ -53,33 +55,31 @@ module.exports = {
         NODE_ENV: 'development',
         VIDEO_PORT: 8080
       },
-      error_file: './logs/betti-webrtc-error.log',
-      out_file: './logs/betti-webrtc-out.log',
+      error_file: './logs/betti-video-error.log',
+      out_file: './logs/betti-video-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true
     },
 
-    // Frontend Vite Server
+    // Frontend Development Server (Vite)
     {
       name: 'betti-frontend',
-      script: 'npm',
-      args: 'run start',
-      cwd: './frontend',
+      script: './scripts/start-frontend.js',
+      cwd: './',
+      exec_mode: 'fork',
       instances: 1,
       autorestart: true,
       watch: false,
-      max_memory_restart: '300M', // Vite may use more memory
+      max_memory_restart: '500M',
       kill_timeout: 5000,
       env: {
-        NODE_ENV: 'production',
-        PORT: 5173,
-        HOST: 'true' // Vite --host flag equivalent
-      },
-      env_development: {
         NODE_ENV: 'development'
       },
-      error_file: '../logs/betti-frontend-error.log',
-      out_file: '../logs/betti-frontend-out.log',
+      env_production: {
+        NODE_ENV: 'production'
+      },
+      error_file: './logs/betti-frontend-error.log',
+      out_file: './logs/betti-frontend-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true
     }

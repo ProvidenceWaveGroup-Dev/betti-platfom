@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import './VideoChat.css'
 import '../styles/mobileVideo.scss'
 
@@ -18,6 +18,17 @@ function VideoChat({ variant = 'desktop', onNavigate }) {
   const [isCameraOff, setIsCameraOff] = useState(false)
   const [showControls, setShowControls] = useState(true)
 
+  // Reconnection state
+  const reconnectAttemptsRef = useRef(0)
+  const reconnectTimeoutRef = useRef(null)
+  const maxReconnectAttempts = 5
+  const isConnectingRef = useRef(false)
+  const isMountedRef = useRef(true)
+  const hasInitializedRef = useRef(false)
+
+  // Queue for ICE candidates received before remote description is set
+  const iceCandidateQueueRef = useRef([])
+
   const localVideoRef = useRef(null)
   const remoteVideoRef = useRef(null)
 
@@ -34,47 +45,86 @@ function VideoChat({ variant = 'desktop', onNavigate }) {
     ]
   }
 
-  useEffect(() => {
-    // Mobile: Initialize local video preview immediately
-    if (isMobile) {
-      const initializePreview = async () => {
-        try {
-          const stream = await getUserMedia()
-          if (stream) {
-            console.log('Local video preview initialized')
-          }
-        } catch (error) {
-          console.error('Failed to initialize video preview:', error)
-        }
-      }
-      initializePreview()
-    }
-
-    // Initialize WebSocket connection
+  // Build WebSocket URL
+  const getWsUrl = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
 
-    let wsUrl
-    if (isMobile) {
-      // Mobile: Always use proxy path for ngrok compatibility
-      wsUrl = `${protocol}//${window.location.host}/video`
-    } else {
-      // Desktop: More complex logic
-      const isProxied = window.location.hostname.includes('ngrok') ||
-                        window.location.hostname.includes('localhost')
+    // Always use proxy path - works for both mobile and desktop, ngrok, and Cloudflare
+    const isProxied = window.location.hostname.includes('ngrok') ||
+                      window.location.hostname.includes('trycloudflare.com') ||
+                      isMobile
 
-      if (isProxied && !import.meta.env.VITE_VIDEO_SERVER_URL) {
-        wsUrl = `${protocol}//${window.location.host}/video`
-      } else {
-        const VIDEO_SERVER = import.meta.env.VITE_VIDEO_SERVER_URL || `${window.location.hostname}:8080`
-        wsUrl = `${protocol}//${VIDEO_SERVER}`
-      }
+    if (isProxied || !import.meta.env.VITE_VIDEO_SERVER_URL) {
+      return `${protocol}//${window.location.host}/video`
+    } else {
+      const VIDEO_SERVER = import.meta.env.VITE_VIDEO_SERVER_URL || `${window.location.hostname}:8080`
+      return `${protocol}//${VIDEO_SERVER}`
+    }
+  }
+
+  // Connect to WebSocket with reconnection support
+  const connectWebSocket = useCallback(() => {
+    // Prevent duplicate connections
+    if (isConnectingRef.current) {
+      console.log('Already connecting, skipping...')
+      return
     }
 
-    console.log('Connecting to video server at:', wsUrl)
-    const ws = new WebSocket(wsUrl)
+    if (signalingWsRef.current && signalingWsRef.current.readyState === WebSocket.OPEN) {
+      console.log('Already connected, skipping...')
+      return
+    }
+
+    if (signalingWsRef.current && signalingWsRef.current.readyState === WebSocket.CONNECTING) {
+      console.log('Connection in progress, skipping...')
+      return
+    }
+
+    // Check if we've exceeded max attempts
+    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+      console.log('Max reconnection attempts reached')
+      setConnectionStatus('connection failed - tap to retry')
+      return
+    }
+
+    isConnectingRef.current = true
+    const wsUrl = getWsUrl()
+    const currentAttempt = reconnectAttemptsRef.current + 1
+    console.log(`Connecting to video server at: ${wsUrl} (attempt ${currentAttempt}/${maxReconnectAttempts})`)
+
+    if (reconnectAttemptsRef.current > 0) {
+      setConnectionStatus(`reconnecting (${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`)
+    } else {
+      setConnectionStatus('connecting...')
+    }
+
+    let ws
+    try {
+      ws = new WebSocket(wsUrl)
+    } catch (error) {
+      console.error('Failed to create WebSocket:', error)
+      isConnectingRef.current = false
+      setConnectionStatus('connection failed - tap to retry')
+      return
+    }
+
+    // Connection timeout - if not connected in 8 seconds, try again
+    const connectionTimeout = setTimeout(() => {
+      if (ws.readyState !== WebSocket.OPEN) {
+        console.log('Connection timeout, closing and retrying...')
+        isConnectingRef.current = false
+        try {
+          ws.close()
+        } catch (e) {}
+        scheduleReconnect()
+      }
+    }, 8000)
 
     ws.onopen = () => {
+      clearTimeout(connectionTimeout)
       console.log('Connected to signaling server')
+      isConnectingRef.current = false
+      reconnectAttemptsRef.current = 0 // Reset attempts on successful connection
       setConnectionStatus('connected')
       setSignalingWs(ws)
       signalingWsRef.current = ws
@@ -113,16 +163,94 @@ function VideoChat({ variant = 'desktop', onNavigate }) {
     }
 
     ws.onclose = (event) => {
+      clearTimeout(connectionTimeout)
       console.log('Disconnected from signaling server', event.code, event.reason)
-      setConnectionStatus('disconnected')
+      isConnectingRef.current = false
       setSignalingWs(null)
       signalingWsRef.current = null
+
+      // Don't reconnect if component is unmounted or if it was a clean close
+      if (!isMountedRef.current) return
+
+      // Auto-reconnect with exponential backoff (but only if not a clean close)
+      if (event.code !== 1000) { // 1000 = normal closure
+        scheduleReconnect()
+      } else {
+        setConnectionStatus('disconnected')
+      }
     }
 
     ws.onerror = (error) => {
+      clearTimeout(connectionTimeout)
       console.error('WebSocket error:', error)
-      setConnectionStatus('connection failed')
+      // Don't set isConnectingRef to false here - onclose will be called and handle it
     }
+  }, []) // No dependencies - uses refs
+
+  // Schedule a reconnection attempt
+  const scheduleReconnect = useCallback(() => {
+    if (!isMountedRef.current) return
+
+    reconnectAttemptsRef.current += 1
+
+    if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+      const delay = Math.min(1000 * Math.pow(1.5, reconnectAttemptsRef.current - 1), 8000) // Max 8 seconds
+      console.log(`Scheduling reconnection in ${delay}ms (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`)
+      setConnectionStatus(`reconnecting in ${Math.round(delay/1000)}s...`)
+
+      reconnectTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          connectWebSocket()
+        }
+      }, delay)
+    } else {
+      setConnectionStatus('connection failed - tap to retry')
+    }
+  }, [connectWebSocket])
+
+  // Manual retry connection
+  const retryConnection = useCallback(() => {
+    reconnectAttemptsRef.current = 0
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
+    }
+    isConnectingRef.current = false
+    connectWebSocket()
+  }, [connectWebSocket])
+
+  // Main initialization effect - runs once on mount
+  useEffect(() => {
+    // Prevent double initialization in React StrictMode
+    if (hasInitializedRef.current) {
+      return
+    }
+    hasInitializedRef.current = true
+    isMountedRef.current = true
+
+    console.log('VideoChat initializing...')
+
+    // Mobile: Initialize local video preview immediately
+    if (isMobile) {
+      const initializePreview = async () => {
+        try {
+          const stream = await getUserMedia()
+          if (stream) {
+            console.log('Local video preview initialized')
+          }
+        } catch (error) {
+          console.error('Failed to initialize video preview:', error)
+        }
+      }
+      initializePreview()
+    }
+
+    // Small delay before connecting to ensure component is fully mounted
+    const initTimeout = setTimeout(() => {
+      if (isMountedRef.current) {
+        connectWebSocket()
+      }
+    }, 100)
 
     // Mobile: Hide controls after 3 seconds
     let hideControlsTimer
@@ -134,20 +262,39 @@ function VideoChat({ variant = 'desktop', onNavigate }) {
 
     // Cleanup on component unmount
     return () => {
+      console.log('VideoChat unmounting...')
+      isMountedRef.current = false
+      hasInitializedRef.current = false
+      clearTimeout(initTimeout)
       if (hideControlsTimer) clearTimeout(hideControlsTimer)
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close()
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
+
+      // Close WebSocket connection
+      if (signalingWsRef.current) {
+        try {
+          if (signalingWsRef.current.readyState === WebSocket.OPEN ||
+              signalingWsRef.current.readyState === WebSocket.CONNECTING) {
+            signalingWsRef.current.close(1000, 'Component unmounting')
+          }
+        } catch (e) {}
+        signalingWsRef.current = null
       }
+
+      // Stop media stream
       if (!isMobile && mediaStream) {
         mediaStream.getTracks().forEach(track => track.stop())
       }
+
+      // Close peer connection
       if (peerConnectionRef.current) {
-        peerConnectionRef.current.close()
+        try {
+          peerConnectionRef.current.close()
+        } catch (e) {}
         peerConnectionRef.current = null
         setPeerConnection(null)
       }
     }
-  }, [])
+  }, []) // Empty dependency array - run once on mount
 
   // Handle waiting participants after peer connection is created
   useEffect(() => {
@@ -391,6 +538,24 @@ function VideoChat({ variant = 'desktop', onNavigate }) {
     }
   }
 
+  // Process queued ICE candidates after remote description is set
+  const processIceCandidateQueue = async () => {
+    if (peerConnectionRef.current && peerConnectionRef.current.remoteDescription) {
+      const queueLength = iceCandidateQueueRef.current.length
+      if (queueLength > 0) {
+        console.log(`Processing ${queueLength} queued ICE candidates`)
+      }
+      while (iceCandidateQueueRef.current.length > 0) {
+        const candidate = iceCandidateQueueRef.current.shift()
+        try {
+          await peerConnectionRef.current.addIceCandidate(candidate)
+        } catch (error) {
+          console.error('Error processing queued ICE candidate:', error)
+        }
+      }
+    }
+  }
+
   const handleOffer = async (data, websocket) => {
     console.log('Received offer from:', data.fromUserId)
 
@@ -420,6 +585,9 @@ function VideoChat({ variant = 'desktop', onNavigate }) {
 
     try {
       await pc.setRemoteDescription(data.offer)
+      // Process any queued ICE candidates
+      await processIceCandidateQueue()
+
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
 
@@ -444,6 +612,8 @@ function VideoChat({ variant = 'desktop', onNavigate }) {
       try {
         await peerConnectionRef.current.setRemoteDescription(data.answer)
         console.log('Answer processed')
+        // Process any queued ICE candidates
+        await processIceCandidateQueue()
       } catch (error) {
         console.error('Error handling answer:', error)
       }
@@ -452,10 +622,20 @@ function VideoChat({ variant = 'desktop', onNavigate }) {
 
   const handleIceCandidate = async (data) => {
     if (peerConnectionRef.current) {
-      try {
-        await peerConnectionRef.current.addIceCandidate(data.candidate)
-      } catch (error) {
-        console.error('Error handling ICE candidate:', error)
+      // Check if remote description is set
+      if (peerConnectionRef.current.remoteDescription) {
+        try {
+          await peerConnectionRef.current.addIceCandidate(data.candidate)
+        } catch (error) {
+          // Ignore errors for candidates that arrive after connection is established
+          if (!error.message.includes('location information')) {
+            console.error('Error handling ICE candidate:', error)
+          }
+        }
+      } else {
+        // Queue the candidate for later
+        console.log('Queuing ICE candidate - remote description not set yet')
+        iceCandidateQueueRef.current.push(data.candidate)
       }
     }
   }
@@ -538,8 +718,21 @@ function VideoChat({ variant = 'desktop', onNavigate }) {
       <div className="mobile-video" onClick={handleScreenTap}>
         {/* Status Bar */}
         <div className="video-status-bar">
-          <div className="status-indicator">
-            <span className={`status-dot ${connectionStatus === 'call active' ? 'active' : 'inactive'}`}></span>
+          <div
+            className={`status-indicator ${connectionStatus.includes('tap to retry') ? 'clickable' : ''}`}
+            onClick={(e) => {
+              if (connectionStatus.includes('tap to retry')) {
+                e.stopPropagation()
+                retryConnection()
+              }
+            }}
+          >
+            <span className={`status-dot ${
+              connectionStatus === 'call active' ? 'active' :
+              connectionStatus === 'connected' ? 'connected' :
+              connectionStatus.includes('reconnecting') || connectionStatus.includes('connecting') ? 'reconnecting' :
+              'inactive'
+            }`}></span>
             <span className="status-text">{connectionStatus}</span>
           </div>
         </div>
