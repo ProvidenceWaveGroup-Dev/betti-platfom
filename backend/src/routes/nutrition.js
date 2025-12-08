@@ -151,6 +151,55 @@ router.get('/history', async (req, res) => {
   }
 })
 
+// GET /api/nutrition/meal/:mealId - Get a single meal with its foods
+router.get('/meal/:mealId', async (req, res) => {
+  try {
+    const { mealId } = req.params
+
+    const meal = await nutritionService.getMeal(mealId)
+
+    res.json({
+      success: true,
+      data: meal
+    })
+  } catch (error) {
+    console.error('Error in GET /api/nutrition/meal/:mealId:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
+  }
+})
+
+// PUT /api/nutrition/meal/:mealId - Update a meal
+router.put('/meal/:mealId', async (req, res) => {
+  try {
+    const { mealId } = req.params
+    const { mealType, foods } = req.body
+
+    if (!foods || !Array.isArray(foods)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field: foods array'
+      })
+    }
+
+    const meal = await nutritionService.updateMeal(mealId, mealType, foods)
+
+    res.json({
+      success: true,
+      data: meal,
+      message: 'Meal updated successfully'
+    })
+  } catch (error) {
+    console.error('Error in PUT /api/nutrition/meal/:mealId:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
+  }
+})
+
 // DELETE /api/nutrition/meal/:mealId - Delete a meal
 router.delete('/meal/:mealId', async (req, res) => {
   try {

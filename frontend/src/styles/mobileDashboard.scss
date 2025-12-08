@@ -134,13 +134,27 @@
       justify-content: center;
       gap: 8px;
 
+      &.warning {
+        color: #fbbf24;
+      }
+
       .dot {
         width: 8px;
         height: 8px;
         background: #4ade80;
         border-radius: 50%;
         flex-shrink: 0;
+
+        &.warning {
+          background: #fbbf24;
+          animation: pulse 1.5s ease-in-out infinite;
+        }
       }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
 
     // Appointment card specific styles

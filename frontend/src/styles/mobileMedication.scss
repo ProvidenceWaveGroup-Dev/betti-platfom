@@ -690,6 +690,24 @@
             width: 36px;
             font-size: 11px;
           }
+
+          &.today {
+            background: rgba(74, 158, 255, 0.15);
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin-left: -10px;
+            margin-right: -10px;
+
+            .day-date {
+              color: #4a9eff;
+              font-weight: 600;
+            }
+
+            .day-rate {
+              color: #4a9eff;
+              font-weight: 600;
+            }
+          }
         }
       }
     }

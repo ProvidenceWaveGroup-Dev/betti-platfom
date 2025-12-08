@@ -24,6 +24,17 @@ function Nutrition({ isCollapsed = false, variant = 'desktop', onNavigate }) {
   const [nutritionHistory, setNutritionHistory] = useState([])
   const [detailsLoading, setDetailsLoading] = useState(false)
 
+  // Meal details/edit state
+  const [showMealDetailsModal, setShowMealDetailsModal] = useState(false)
+  const [selectedMeal, setSelectedMeal] = useState(null)
+  const [mealDetailsLoading, setMealDetailsLoading] = useState(false)
+  const [isEditingMeal, setIsEditingMeal] = useState(false)
+  const [editingFoods, setEditingFoods] = useState([])
+  const [editingMealType, setEditingMealType] = useState('')
+  const [editSearchQuery, setEditSearchQuery] = useState('')
+  const [editSearchResults, setEditSearchResults] = useState([])
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
   const isMobile = variant === 'mobile'
 
   useEffect(() => {
@@ -201,6 +212,175 @@ function Nutrition({ isCollapsed = false, variant = 'desktop', onNavigate }) {
     setSelectedFoods([])
     setMealError(null)
   }
+
+  // Meal details/edit functions
+  const handleMealClick = async (meal) => {
+    try {
+      setMealDetailsLoading(true)
+      setShowMealDetailsModal(true)
+      setIsEditingMeal(false)
+      setShowDeleteConfirm(false)
+
+      const response = await nutritionApi.getMeal(meal.id)
+      const mealData = response.data || response
+      setSelectedMeal(mealData)
+      setEditingFoods(mealData.foods || [])
+      setEditingMealType(mealData.mealType)
+
+      if (navigator.vibrate) navigator.vibrate(30)
+    } catch (error) {
+      console.error('Failed to load meal details:', error)
+      setMealError('Failed to load meal details')
+    } finally {
+      setMealDetailsLoading(false)
+    }
+  }
+
+  const handleStartEditMeal = () => {
+    setIsEditingMeal(true)
+    setEditSearchQuery('')
+    setEditSearchResults([])
+    if (navigator.vibrate) navigator.vibrate(30)
+  }
+
+  const handleCancelEditMeal = () => {
+    setIsEditingMeal(false)
+    setEditingFoods(selectedMeal?.foods || [])
+    setEditingMealType(selectedMeal?.mealType || '')
+    setEditSearchQuery('')
+    setEditSearchResults([])
+  }
+
+  const handleSaveMealEdit = async () => {
+    if (editingFoods.length === 0) {
+      setMealError('Meal must have at least one food item')
+      return
+    }
+
+    try {
+      setMealLoading(true)
+
+      // Prepare foods for API - normalize the data
+      const foods = editingFoods.map(food => ({
+        name: food.name,
+        quantity: food.quantity || 1,
+        unit: food.unit || 'serving',
+        calories: Math.round((food.calories || 0) / (food.quantity || 1)),
+        protein: Math.round((food.protein || 0) / (food.quantity || 1)),
+        carbs: Math.round((food.carbs || 0) / (food.quantity || 1)),
+        fat: Math.round((food.fat || 0) / (food.quantity || 1)),
+        fiber: Math.round((food.fiber || 0) / (food.quantity || 1)),
+        sodium: Math.round((food.sodium || 0) / (food.quantity || 1))
+      }))
+
+      await nutritionApi.updateMeal(selectedMeal.id, editingMealType, foods)
+      await loadNutritionData()
+
+      setShowMealDetailsModal(false)
+      setIsEditingMeal(false)
+      setSelectedMeal(null)
+
+      if (navigator.vibrate) navigator.vibrate(50)
+    } catch (error) {
+      console.error('Failed to update meal:', error)
+      setMealError('Failed to update meal: ' + error.message)
+    } finally {
+      setMealLoading(false)
+    }
+  }
+
+  const handleDeleteMealConfirm = async () => {
+    try {
+      setMealLoading(true)
+      await nutritionApi.deleteMeal(selectedMeal.id)
+      await loadNutritionData()
+
+      setShowMealDetailsModal(false)
+      setShowDeleteConfirm(false)
+      setSelectedMeal(null)
+
+      if (navigator.vibrate) navigator.vibrate(50)
+    } catch (error) {
+      console.error('Failed to delete meal:', error)
+      setMealError('Failed to delete meal: ' + error.message)
+    } finally {
+      setMealLoading(false)
+    }
+  }
+
+  const addEditFood = (food) => {
+    const existingIndex = editingFoods.findIndex(f => f.name === food.name)
+
+    if (existingIndex >= 0) {
+      const updated = [...editingFoods]
+      updated[existingIndex] = {
+        ...updated[existingIndex],
+        quantity: (updated[existingIndex].quantity || 1) + 1,
+        calories: food.calories * ((updated[existingIndex].quantity || 1) + 1),
+        protein: food.protein * ((updated[existingIndex].quantity || 1) + 1),
+        carbs: food.carbs * ((updated[existingIndex].quantity || 1) + 1),
+        fat: food.fat * ((updated[existingIndex].quantity || 1) + 1)
+      }
+      setEditingFoods(updated)
+    } else {
+      setEditingFoods([...editingFoods, {
+        ...food,
+        quantity: 1,
+        unit: food.unit || 'serving'
+      }])
+    }
+    setEditSearchQuery('')
+    setEditSearchResults([])
+  }
+
+  const removeEditFood = (index) => {
+    setEditingFoods(editingFoods.filter((_, i) => i !== index))
+  }
+
+  const updateEditFoodQuantity = (index, quantity) => {
+    if (quantity <= 0) {
+      removeEditFood(index)
+      return
+    }
+
+    const updated = [...editingFoods]
+    const food = updated[index]
+    const baseCalories = (food.calories || 0) / (food.quantity || 1)
+    const baseProtein = (food.protein || 0) / (food.quantity || 1)
+    const baseCarbs = (food.carbs || 0) / (food.quantity || 1)
+    const baseFat = (food.fat || 0) / (food.quantity || 1)
+
+    updated[index] = {
+      ...food,
+      quantity: parseFloat(quantity),
+      calories: baseCalories * quantity,
+      protein: baseProtein * quantity,
+      carbs: baseCarbs * quantity,
+      fat: baseFat * quantity
+    }
+    setEditingFoods(updated)
+  }
+
+  // Edit food search with debounce
+  useEffect(() => {
+    if (!isEditingMeal || editSearchQuery.length < 2) {
+      setEditSearchResults([])
+      return
+    }
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const response = await nutritionApi.searchFoods(editSearchQuery)
+        const foods = response.data || response || []
+        setEditSearchResults(Array.isArray(foods) ? foods.slice(0, 8) : [])
+      } catch (error) {
+        console.error('Edit food search error:', error)
+        setEditSearchResults([])
+      }
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [editSearchQuery, isEditingMeal])
 
   const loadNutritionDetails = async () => {
     try {
@@ -438,7 +618,11 @@ function Nutrition({ isCollapsed = false, variant = 'desktop', onNavigate }) {
             <h3>Today's Meals</h3>
             <div className="meals-list">
               {todaysMeals.map(meal => (
-                <div key={meal.id} className="meal-item">
+                <div
+                  key={meal.id}
+                  className="meal-item clickable"
+                  onClick={() => handleMealClick(meal)}
+                >
                   <div className="meal-icon">{getMealTypeIcon(meal.mealType)}</div>
                   <div className="meal-content">
                     <div className="meal-header">
@@ -447,7 +631,7 @@ function Nutrition({ isCollapsed = false, variant = 'desktop', onNavigate }) {
                     </div>
                     <div className="meal-calories">{meal.totalCalories} calories</div>
                   </div>
-                  <div className="meal-status">✓</div>
+                  <div className="meal-chevron">›</div>
                 </div>
               ))}
             </div>
@@ -697,6 +881,206 @@ function Nutrition({ isCollapsed = false, variant = 'desktop', onNavigate }) {
             </div>
           </div>
         )}
+
+        {/* Meal Details Modal */}
+        {showMealDetailsModal && (
+          <div className="modal-overlay" onClick={() => {
+            setShowMealDetailsModal(false)
+            setIsEditingMeal(false)
+            setShowDeleteConfirm(false)
+          }}>
+            <div className="meal-details-modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{isEditingMeal ? 'Edit Meal' : 'Meal Details'}</h2>
+                <button className="close-button" onClick={() => {
+                  setShowMealDetailsModal(false)
+                  setIsEditingMeal(false)
+                  setShowDeleteConfirm(false)
+                }}>✕</button>
+              </div>
+
+              {mealError && <div className="error-message">{mealError}</div>}
+
+              {mealDetailsLoading ? (
+                <div className="loading-state">Loading meal details...</div>
+              ) : selectedMeal && (
+                <div className="modal-content">
+                  {/* Delete Confirmation */}
+                  {showDeleteConfirm ? (
+                    <div className="delete-confirm">
+                      <div className="delete-icon">🗑️</div>
+                      <h3>Delete this meal?</h3>
+                      <p>This action cannot be undone.</p>
+                      <div className="delete-actions">
+                        <button
+                          className="cancel-btn"
+                          onClick={() => setShowDeleteConfirm(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="delete-btn"
+                          onClick={handleDeleteMealConfirm}
+                          disabled={mealLoading}
+                        >
+                          {mealLoading ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : isEditingMeal ? (
+                    /* Edit Mode */
+                    <div className="edit-mode">
+                      {/* Meal Type Selector */}
+                      <div className="edit-meal-type">
+                        <label>Meal Type</label>
+                        <div className="meal-type-options">
+                          {['breakfast', 'lunch', 'dinner', 'snack'].map(type => (
+                            <button
+                              key={type}
+                              className={`meal-type-option ${editingMealType === type ? 'active' : ''}`}
+                              onClick={() => setEditingMealType(type)}
+                            >
+                              {getMealTypeIcon(type)} {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Food Search */}
+                      <div className="edit-food-search">
+                        <input
+                          type="text"
+                          placeholder="Search to add more foods..."
+                          value={editSearchQuery}
+                          onChange={(e) => setEditSearchQuery(e.target.value)}
+                          className="food-search-input"
+                        />
+                        {editSearchResults.length > 0 && (
+                          <div className="search-results">
+                            {editSearchResults.map((food, index) => (
+                              <div key={index} className="search-result-item" onClick={() => addEditFood(food)}>
+                                <div className="food-info">
+                                  <div className="food-name">{food.name}</div>
+                                  <div className="food-details">{food.calories} cal</div>
+                                </div>
+                                <button className="add-food-button">+</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Editing Foods List */}
+                      <div className="foods-list editing">
+                        <h4>Foods ({editingFoods.length})</h4>
+                        {editingFoods.map((food, index) => (
+                          <div key={index} className="food-item editing">
+                            <div className="food-info">
+                              <div className="food-name">{food.name}</div>
+                              <div className="food-macros">
+                                {Math.round(food.calories || 0)} cal • {Math.round(food.protein || 0)}g protein
+                              </div>
+                            </div>
+                            <div className="food-controls">
+                              <input
+                                type="number"
+                                min="0.1"
+                                step="0.1"
+                                value={food.quantity || 1}
+                                onChange={(e) => updateEditFoodQuantity(index, parseFloat(e.target.value))}
+                                className="quantity-input"
+                              />
+                              <span className="unit">{food.unit || 'serving'}</span>
+                              <button className="remove-btn" onClick={() => removeEditFood(index)}>×</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Edit Actions */}
+                      <div className="edit-actions">
+                        <button className="cancel-btn" onClick={handleCancelEditMeal}>
+                          Cancel
+                        </button>
+                        <button
+                          className="save-btn"
+                          onClick={handleSaveMealEdit}
+                          disabled={mealLoading || editingFoods.length === 0}
+                        >
+                          {mealLoading ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* View Mode */
+                    <div className="view-mode">
+                      {/* Meal Header */}
+                      <div className="meal-header-info">
+                        <div className="meal-type-badge">
+                          <span className="meal-icon">{getMealTypeIcon(selectedMeal.mealType)}</span>
+                          <span className="meal-type-text">
+                            {selectedMeal.mealType?.charAt(0).toUpperCase() + selectedMeal.mealType?.slice(1)}
+                          </span>
+                        </div>
+                        <div className="meal-time-info">{selectedMeal.time}</div>
+                      </div>
+
+                      {/* Nutrition Summary */}
+                      <div className="meal-nutrition-summary">
+                        <div className="nutrition-stat">
+                          <span className="stat-value">{selectedMeal.totalCalories || 0}</span>
+                          <span className="stat-label">calories</span>
+                        </div>
+                        <div className="nutrition-stat">
+                          <span className="stat-value">{selectedMeal.totalProtein || 0}g</span>
+                          <span className="stat-label">protein</span>
+                        </div>
+                        <div className="nutrition-stat">
+                          <span className="stat-value">{selectedMeal.totalCarbs || 0}g</span>
+                          <span className="stat-label">carbs</span>
+                        </div>
+                        <div className="nutrition-stat">
+                          <span className="stat-value">{selectedMeal.totalFat || 0}g</span>
+                          <span className="stat-label">fat</span>
+                        </div>
+                      </div>
+
+                      {/* Foods List */}
+                      <div className="foods-list">
+                        <h4>Foods ({selectedMeal.foods?.length || 0})</h4>
+                        {selectedMeal.foods?.map((food, index) => (
+                          <div key={index} className="food-item">
+                            <div className="food-info">
+                              <div className="food-name">{food.name}</div>
+                              <div className="food-macros">
+                                {Math.round(food.calories || 0)} cal • {Math.round(food.protein || 0)}g protein
+                              </div>
+                            </div>
+                            <div className="food-quantity">
+                              {food.quantity || 1} {food.unit || 'serving'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="meal-actions">
+                        <button className="edit-btn" onClick={handleStartEditMeal}>
+                          <span className="btn-icon">✏️</span>
+                          Edit Meal
+                        </button>
+                        <button className="delete-btn" onClick={() => setShowDeleteConfirm(true)}>
+                          <span className="btn-icon">🗑️</span>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -756,19 +1140,17 @@ function Nutrition({ isCollapsed = false, variant = 'desktop', onNavigate }) {
           <h3 className="recent-meals-title">Today's Meals</h3>
           <div className="meals-list">
             {todaysMeals.slice(-3).map(meal => (
-              <div key={meal.id} className="meal-item">
+              <div
+                key={meal.id}
+                className="meal-item clickable"
+                onClick={() => handleMealClick(meal)}
+              >
                 <div className="meal-info">
                   <div className="meal-time">{meal.time}</div>
                   <div className="meal-type">{meal.mealType}</div>
                   <div className="meal-calories">{meal.totalCalories} kcal</div>
                 </div>
-                <button
-                  className="delete-meal-button"
-                  onClick={() => handleDeleteMeal(meal.id)}
-                  title="Delete meal"
-                >
-                  ×
-                </button>
+                <span className="meal-chevron">›</span>
               </div>
             ))}
           </div>
@@ -805,6 +1187,206 @@ function Nutrition({ isCollapsed = false, variant = 'desktop', onNavigate }) {
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
       />
+
+      {/* Meal Details Modal - Desktop */}
+      {showMealDetailsModal && (
+        <div className="modal-overlay" onClick={() => {
+          setShowMealDetailsModal(false)
+          setIsEditingMeal(false)
+          setShowDeleteConfirm(false)
+        }}>
+          <div className="meal-details-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{isEditingMeal ? 'Edit Meal' : 'Meal Details'}</h2>
+              <button className="close-button" onClick={() => {
+                setShowMealDetailsModal(false)
+                setIsEditingMeal(false)
+                setShowDeleteConfirm(false)
+              }}>✕</button>
+            </div>
+
+            {mealError && <div className="error-message">{mealError}</div>}
+
+            {mealDetailsLoading ? (
+              <div className="loading-state">Loading meal details...</div>
+            ) : selectedMeal && (
+              <div className="modal-content">
+                {/* Delete Confirmation */}
+                {showDeleteConfirm ? (
+                  <div className="delete-confirm">
+                    <div className="delete-icon">🗑️</div>
+                    <h3>Delete this meal?</h3>
+                    <p>This action cannot be undone.</p>
+                    <div className="delete-actions">
+                      <button
+                        className="cancel-btn"
+                        onClick={() => setShowDeleteConfirm(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="delete-btn"
+                        onClick={handleDeleteMealConfirm}
+                        disabled={mealLoading}
+                      >
+                        {mealLoading ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                ) : isEditingMeal ? (
+                  /* Edit Mode */
+                  <div className="edit-mode">
+                    {/* Meal Type Selector */}
+                    <div className="edit-meal-type">
+                      <label>Meal Type</label>
+                      <div className="meal-type-options">
+                        {['breakfast', 'lunch', 'dinner', 'snack'].map(type => (
+                          <button
+                            key={type}
+                            className={`meal-type-option ${editingMealType === type ? 'active' : ''}`}
+                            onClick={() => setEditingMealType(type)}
+                          >
+                            {getMealTypeIcon(type)} {type.charAt(0).toUpperCase() + type.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Food Search */}
+                    <div className="edit-food-search">
+                      <input
+                        type="text"
+                        placeholder="Search to add more foods..."
+                        value={editSearchQuery}
+                        onChange={(e) => setEditSearchQuery(e.target.value)}
+                        className="food-search-input"
+                      />
+                      {editSearchResults.length > 0 && (
+                        <div className="search-results">
+                          {editSearchResults.map((food, index) => (
+                            <div key={index} className="search-result-item" onClick={() => addEditFood(food)}>
+                              <div className="food-info">
+                                <div className="food-name">{food.name}</div>
+                                <div className="food-details">{food.calories} cal</div>
+                              </div>
+                              <button className="add-food-button">+</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Editing Foods List */}
+                    <div className="foods-list editing">
+                      <h4>Foods ({editingFoods.length})</h4>
+                      {editingFoods.map((food, index) => (
+                        <div key={index} className="food-item editing">
+                          <div className="food-info">
+                            <div className="food-name">{food.name}</div>
+                            <div className="food-macros">
+                              {Math.round(food.calories || 0)} cal • {Math.round(food.protein || 0)}g protein
+                            </div>
+                          </div>
+                          <div className="food-controls">
+                            <input
+                              type="number"
+                              min="0.1"
+                              step="0.1"
+                              value={food.quantity || 1}
+                              onChange={(e) => updateEditFoodQuantity(index, parseFloat(e.target.value))}
+                              className="quantity-input"
+                            />
+                            <span className="unit">{food.unit || 'serving'}</span>
+                            <button className="remove-btn" onClick={() => removeEditFood(index)}>×</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Edit Actions */}
+                    <div className="edit-actions">
+                      <button className="cancel-btn" onClick={handleCancelEditMeal}>
+                        Cancel
+                      </button>
+                      <button
+                        className="save-btn"
+                        onClick={handleSaveMealEdit}
+                        disabled={mealLoading || editingFoods.length === 0}
+                      >
+                        {mealLoading ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* View Mode */
+                  <div className="view-mode">
+                    {/* Meal Header */}
+                    <div className="meal-header-info">
+                      <div className="meal-type-badge">
+                        <span className="meal-icon">{getMealTypeIcon(selectedMeal.mealType)}</span>
+                        <span className="meal-type-text">
+                          {selectedMeal.mealType?.charAt(0).toUpperCase() + selectedMeal.mealType?.slice(1)}
+                        </span>
+                      </div>
+                      <div className="meal-time-info">{selectedMeal.time}</div>
+                    </div>
+
+                    {/* Nutrition Summary */}
+                    <div className="meal-nutrition-summary">
+                      <div className="nutrition-stat">
+                        <span className="stat-value">{selectedMeal.totalCalories || 0}</span>
+                        <span className="stat-label">calories</span>
+                      </div>
+                      <div className="nutrition-stat">
+                        <span className="stat-value">{selectedMeal.totalProtein || 0}g</span>
+                        <span className="stat-label">protein</span>
+                      </div>
+                      <div className="nutrition-stat">
+                        <span className="stat-value">{selectedMeal.totalCarbs || 0}g</span>
+                        <span className="stat-label">carbs</span>
+                      </div>
+                      <div className="nutrition-stat">
+                        <span className="stat-value">{selectedMeal.totalFat || 0}g</span>
+                        <span className="stat-label">fat</span>
+                      </div>
+                    </div>
+
+                    {/* Foods List */}
+                    <div className="foods-list">
+                      <h4>Foods ({selectedMeal.foods?.length || 0})</h4>
+                      {selectedMeal.foods?.map((food, index) => (
+                        <div key={index} className="food-item">
+                          <div className="food-info">
+                            <div className="food-name">{food.name}</div>
+                            <div className="food-macros">
+                              {Math.round(food.calories || 0)} cal • {Math.round(food.protein || 0)}g protein
+                            </div>
+                          </div>
+                          <div className="food-quantity">
+                            {food.quantity || 1} {food.unit || 'serving'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="meal-actions">
+                      <button className="edit-btn" onClick={handleStartEditMeal}>
+                        <span className="btn-icon">✏️</span>
+                        Edit Meal
+                      </button>
+                      <button className="delete-btn" onClick={() => setShowDeleteConfirm(true)}>
+                        <span className="btn-icon">🗑️</span>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

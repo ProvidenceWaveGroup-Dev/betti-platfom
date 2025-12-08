@@ -1029,6 +1029,24 @@
   text-align: right;
 }
 
+.day-adherence.today {
+  background: rgba(74, 158, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-left: -12px;
+  margin-right: -12px;
+}
+
+.day-adherence.today .day-date {
+  color: #4a9eff;
+  font-weight: 600;
+}
+
+.day-adherence.today .day-rate {
+  color: #4a9eff;
+  font-weight: 600;
+}
+
 /* =========================================================================
    HISTORY MODAL
    ========================================================================= */

@@ -73,6 +73,19 @@ class NutritionApi {
     return this.request(`/history${queryString ? `?${queryString}` : ''}`)
   }
 
+  // Get a single meal with its foods
+  async getMeal(mealId) {
+    return this.request(`/meal/${mealId}`)
+  }
+
+  // Update an existing meal
+  async updateMeal(mealId, mealType, foods) {
+    return this.request(`/meal/${mealId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ mealType, foods })
+    })
+  }
+
   // Delete a meal
   async deleteMeal(mealId) {
     return this.request(`/meal/${mealId}`, {

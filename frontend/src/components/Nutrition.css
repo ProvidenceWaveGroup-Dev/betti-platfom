@@ -303,6 +303,22 @@
   transform: scale(1.1);
 }
 
+/* Clickable Meal Items */
+.meal-item.clickable {
+  cursor: pointer;
+}
+
+.meal-item.clickable:active {
+  transform: scale(0.98);
+}
+
+.meal-chevron {
+  font-size: 20px;
+  color: rgba(255, 136, 0, 0.5);
+  font-weight: 300;
+  flex-shrink: 0;
+}
+
 /* Action Buttons */
 .nutrition-actions {
   display: flex;

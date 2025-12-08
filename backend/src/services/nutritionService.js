@@ -298,6 +298,125 @@ class NutritionService {
     }
   }
 
+  // Get a single meal with its foods
+  async getMeal(mealId) {
+    const meal = this.db.prepare(`
+      SELECT m.*,
+             COALESCE(SUM(mf.calories), 0) as totalCalories,
+             COALESCE(SUM(mf.protein), 0) as totalProtein,
+             COALESCE(SUM(mf.carbs), 0) as totalCarbs,
+             COALESCE(SUM(mf.fat), 0) as totalFat,
+             COALESCE(SUM(mf.fiber), 0) as totalFiber,
+             COALESCE(SUM(mf.sodium), 0) as totalSodium
+      FROM meals m
+      LEFT JOIN meal_foods mf ON m.id = mf.meal_id
+      WHERE m.id = ? AND m.user_id = ?
+      GROUP BY m.id
+    `).get(mealId, DEFAULT_USER_ID)
+
+    if (!meal) {
+      throw new Error('Meal not found')
+    }
+
+    // Get foods for the meal
+    const foods = this.db.prepare(`
+      SELECT id, food_name as name, quantity, unit, calories, protein, carbs, fat, fiber, sodium
+      FROM meal_foods WHERE meal_id = ?
+    `).all(mealId)
+
+    return {
+      id: meal.id,
+      date: meal.meal_date,
+      mealType: meal.meal_type,
+      time: meal.meal_time,
+      notes: meal.notes,
+      foods,
+      totalCalories: meal.totalCalories,
+      totalProtein: meal.totalProtein,
+      totalCarbs: meal.totalCarbs,
+      totalFat: meal.totalFat,
+      totalFiber: meal.totalFiber,
+      totalSodium: meal.totalSodium,
+      createdAt: meal.created_at
+    }
+  }
+
+  // Update an existing meal
+  async updateMeal(mealId, mealType, foods) {
+    // Verify meal exists and belongs to user
+    const existingMeal = this.db.prepare('SELECT * FROM meals WHERE id = ? AND user_id = ?')
+      .get(mealId, DEFAULT_USER_ID)
+
+    if (!existingMeal) {
+      throw new Error('Meal not found')
+    }
+
+    // Update meal type if provided
+    if (mealType) {
+      this.db.prepare('UPDATE meals SET meal_type = ? WHERE id = ?')
+        .run(mealType.toLowerCase(), mealId)
+    }
+
+    // Delete existing foods
+    this.db.prepare('DELETE FROM meal_foods WHERE meal_id = ?').run(mealId)
+
+    // Insert new foods
+    const insertFood = this.db.prepare(`
+      INSERT INTO meal_foods (meal_id, food_id, food_name, quantity, unit, calories, protein, carbs, fat, fiber, sodium)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+
+    let totals = { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 }
+
+    for (const food of foods) {
+      // Try to find food in database
+      const dbFood = this.db.prepare('SELECT id FROM foods WHERE LOWER(name) = LOWER(?)').get(food.name)
+
+      const foodCalories = (food.calories || 0) * (food.quantity || 1)
+      const foodProtein = (food.protein || 0) * (food.quantity || 1)
+      const foodCarbs = (food.carbs || 0) * (food.quantity || 1)
+      const foodFat = (food.fat || 0) * (food.quantity || 1)
+      const foodFiber = (food.fiber || 0) * (food.quantity || 1)
+      const foodSodium = (food.sodium || 0) * (food.quantity || 1)
+
+      insertFood.run(
+        mealId,
+        dbFood?.id || null,
+        food.name,
+        food.quantity || 1,
+        food.unit || 'serving',
+        foodCalories,
+        foodProtein,
+        foodCarbs,
+        foodFat,
+        foodFiber,
+        foodSodium
+      )
+
+      // Accumulate totals
+      totals.calories += foodCalories
+      totals.protein += foodProtein
+      totals.carbs += foodCarbs
+      totals.fat += foodFat
+      totals.fiber += foodFiber
+      totals.sodium += foodSodium
+    }
+
+    return {
+      id: Number(mealId),
+      date: existingMeal.meal_date,
+      mealType: mealType?.toLowerCase() || existingMeal.meal_type,
+      time: existingMeal.meal_time,
+      foods,
+      totalCalories: totals.calories,
+      totalProtein: totals.protein,
+      totalCarbs: totals.carbs,
+      totalFat: totals.fat,
+      totalFiber: totals.fiber,
+      totalSodium: totals.sodium
+    }
+  }
+
   // Delete a meal
   async deleteMeal(mealId) {
     // meal_foods will be deleted via CASCADE

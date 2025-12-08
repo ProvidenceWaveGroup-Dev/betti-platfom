@@ -1253,20 +1253,27 @@ function Medication({ isCollapsed = false, variant = 'desktop', onNavigate }) {
 
                     <div className="adherence-by-day">
                       <h4>Daily Breakdown</h4>
-                      {adherenceStats.by_day.map(day => (
-                        <div key={day.date} className="day-adherence">
-                          <span className="day-date">
-                            {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                          </span>
-                          <div className="day-bar">
-                            <div
-                              className="day-fill"
-                              style={{ width: `${day.adherence_rate}%` }}
-                            ></div>
+                      {adherenceStats.by_day.map(day => {
+                        // Parse date without timezone issues by splitting the YYYY-MM-DD string
+                        const [year, month, dayNum] = day.date.split('-').map(Number)
+                        const dateObj = new Date(year, month - 1, dayNum)
+                        const today = new Date()
+                        const isToday = dateObj.toDateString() === today.toDateString()
+                        return (
+                          <div key={day.date} className={`day-adherence ${isToday ? 'today' : ''}`}>
+                            <span className="day-date">
+                              {isToday ? 'Today' : dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            </span>
+                            <div className="day-bar">
+                              <div
+                                className="day-fill"
+                                style={{ width: `${day.adherence_rate}%` }}
+                              ></div>
+                            </div>
+                            <span className="day-rate">{day.adherence_rate}%</span>
                           </div>
-                          <span className="day-rate">{day.adherence_rate}%</span>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -2055,20 +2062,27 @@ function Medication({ isCollapsed = false, variant = 'desktop', onNavigate }) {
 
                   <div className="adherence-by-day">
                     <h4>Daily Breakdown</h4>
-                    {adherenceStats.by_day.map(day => (
-                      <div key={day.date} className="day-adherence">
-                        <span className="day-date">
-                          {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                        </span>
-                        <div className="day-bar">
-                          <div
-                            className="day-fill"
-                            style={{ width: `${day.adherence_rate}%` }}
-                          ></div>
+                    {adherenceStats.by_day.map(day => {
+                      // Parse date without timezone issues by splitting the YYYY-MM-DD string
+                      const [year, month, dayNum] = day.date.split('-').map(Number)
+                      const dateObj = new Date(year, month - 1, dayNum)
+                      const today = new Date()
+                      const isToday = dateObj.toDateString() === today.toDateString()
+                      return (
+                        <div key={day.date} className={`day-adherence ${isToday ? 'today' : ''}`}>
+                          <span className="day-date">
+                            {isToday ? 'Today' : dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </span>
+                          <div className="day-bar">
+                            <div
+                              className="day-fill"
+                              style={{ width: `${day.adherence_rate}%` }}
+                            ></div>
+                          </div>
+                          <span className="day-rate">{day.adherence_rate}%</span>
                         </div>
-                        <span className="day-rate">{day.adherence_rate}%</span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}
