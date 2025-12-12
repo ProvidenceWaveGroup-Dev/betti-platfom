@@ -46,6 +46,8 @@ class BLEHaloProcessor extends EventEmitter {
     this.reconnectAttempts = 0
     this.maxReconnectAttempts = 5
     this.reconnectDelay = 5000 // 5 seconds
+    this.connectionStartTime = null // Track when connection attempt started
+    this.connectionTimeoutMs = 30000 // 30 seconds max for entire connection process
 
     // Latest sensor values
     this.sensorData = {
@@ -129,26 +131,51 @@ class BLEHaloProcessor extends EventEmitter {
 
     // If we think we're connected to THIS device but it's advertising, the connection is stale
     // (A connected BLE device stops advertising, so seeing it means we lost connection)
+    // Check this FIRST, before the isConnecting check
     if (this.connectionState === 'connected' && this.connectedMacAddress === discoveredMac) {
       console.log('[BLEHaloProcessor] Device is advertising but we think we\'re connected - connection is stale, resetting...')
-      this.connectionState = 'disconnected'
-      this.connectedPeripheral = null
-      this.connectedMacAddress = null
-      this.characteristics.clear()
-      if (this.pollInterval) {
-        clearInterval(this.pollInterval)
-        this.pollInterval = null
-      }
-      this.emitConnectionStatus()
+      this.resetConnectionState()
     }
 
-    // Don't connect if already connecting or connected to a different device
+    // Check if isConnecting has been stuck for too long (stale connection attempt)
+    if (this.isConnecting && this.connectionStartTime) {
+      const elapsed = Date.now() - this.connectionStartTime
+      if (elapsed > this.connectionTimeoutMs) {
+        console.log(`[BLEHaloProcessor] Connection attempt timed out after ${elapsed}ms, resetting...`)
+        this.resetConnectionState()
+      } else {
+        console.log(`[BLEHaloProcessor] Connection in progress (${Math.round(elapsed/1000)}s elapsed), skipping...`)
+        return
+      }
+    } else if (this.isConnecting) {
+      console.log('[BLEHaloProcessor] Connection in progress, skipping...')
+      return
+    }
+
+    // Don't connect if already connected to a different device
     if (this.connectionState !== 'disconnected') {
       console.log(`[BLEHaloProcessor] Already ${this.connectionState}, skipping...`)
       return
     }
 
     await this.connectToHalo(device.address)
+  }
+
+  /**
+   * Reset connection state - used when connection is stale or timed out
+   */
+  resetConnectionState() {
+    this.connectionState = 'disconnected'
+    this.connectedPeripheral = null
+    this.connectedMacAddress = null
+    this.isConnecting = false
+    this.connectionStartTime = null
+    this.characteristics.clear()
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval)
+      this.pollInterval = null
+    }
+    this.emitConnectionStatus()
   }
 
   /**
@@ -161,6 +188,7 @@ class BLEHaloProcessor extends EventEmitter {
     }
 
     this.isConnecting = true
+    this.connectionStartTime = Date.now()
     this.connectionState = 'connecting'
     this.emitConnectionStatus()
 
@@ -181,21 +209,32 @@ class BLEHaloProcessor extends EventEmitter {
         return
       }
 
-      // Stop scanning before connecting
+      // Stop scanning before connecting (with timeout)
       if (bleScanner.isScanning) {
         console.log('[BLEHaloProcessor] Stopping scan for connection...')
-        await bleScanner.stopScan()
+        try {
+          await Promise.race([
+            bleScanner.stopScan(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Stop scan timeout')), 5000))
+          ])
+        } catch (e) {
+          console.warn('[BLEHaloProcessor] Stop scan issue:', e.message)
+        }
       }
 
-      // Connect
+      // Connect with timeout
+      console.log(`[BLEHaloProcessor] Peripheral state: ${peripheral.state}`)
       if (peripheral.state !== 'connected') {
+        console.log('[BLEHaloProcessor] Calling peripheral.connect()...')
         await new Promise((resolve, reject) => {
           const timeout = setTimeout(() => {
-            reject(new Error('Connection timeout (15s)'))
-          }, 15000)
+            console.log('[BLEHaloProcessor] Connection timeout triggered')
+            reject(new Error('Connection timeout (10s)'))
+          }, 10000)
 
           peripheral.connect((error) => {
             clearTimeout(timeout)
+            console.log('[BLEHaloProcessor] peripheral.connect callback received')
             if (error) {
               reject(error)
             } else {
@@ -238,6 +277,7 @@ class BLEHaloProcessor extends EventEmitter {
 
     } finally {
       this.isConnecting = false
+      this.connectionStartTime = null
     }
   }
 
@@ -248,7 +288,15 @@ class BLEHaloProcessor extends EventEmitter {
     return new Promise((resolve, reject) => {
       console.log('[BLEHaloProcessor] Discovering services and characteristics...')
 
+      // Add timeout for service discovery (15 seconds)
+      const discoveryTimeout = setTimeout(() => {
+        console.log('[BLEHaloProcessor] Service discovery timeout (15s)')
+        reject(new Error('Service discovery timeout (15s)'))
+      }, 15000)
+
       peripheral.discoverAllServicesAndCharacteristics((error, services, characteristics) => {
+        clearTimeout(discoveryTimeout)
+
         if (error) {
           return reject(new Error('Discovery failed: ' + error.message))
         }
@@ -460,6 +508,8 @@ class BLEHaloProcessor extends EventEmitter {
     this.connectionState = 'disconnected'
     this.connectedPeripheral = null
     this.connectedMacAddress = null
+    this.isConnecting = false
+    this.connectionStartTime = null
     this.characteristics.clear()
 
     if (this.pollInterval) {
@@ -558,6 +608,7 @@ class BLEHaloProcessor extends EventEmitter {
       deviceName: HALO_DEVICE_NAME,
       connectionState: this.connectionState,
       isConnecting: this.isConnecting,
+      connectionElapsedMs: this.connectionStartTime ? Date.now() - this.connectionStartTime : null,
       reconnectAttempts: this.reconnectAttempts,
       sensorData: this.sensorData
     }
