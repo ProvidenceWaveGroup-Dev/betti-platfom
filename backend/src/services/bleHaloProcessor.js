@@ -39,6 +39,7 @@ class BLEHaloProcessor extends EventEmitter {
     super()
 
     this.connectedPeripheral = null
+    this.connectedMacAddress = null // Track MAC of connected device for stale connection detection
     this.isConnecting = false
     this.connectionState = 'disconnected' // disconnected, connecting, connected
     this.characteristics = new Map()
@@ -124,7 +125,24 @@ class BLEHaloProcessor extends EventEmitter {
 
     console.log(`[BLEHaloProcessor] Halo device discovered: ${device.name} (${device.address})`)
 
-    // Don't connect if already connected or connecting
+    const discoveredMac = device.address.toUpperCase()
+
+    // If we think we're connected to THIS device but it's advertising, the connection is stale
+    // (A connected BLE device stops advertising, so seeing it means we lost connection)
+    if (this.connectionState === 'connected' && this.connectedMacAddress === discoveredMac) {
+      console.log('[BLEHaloProcessor] Device is advertising but we think we\'re connected - connection is stale, resetting...')
+      this.connectionState = 'disconnected'
+      this.connectedPeripheral = null
+      this.connectedMacAddress = null
+      this.characteristics.clear()
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval)
+        this.pollInterval = null
+      }
+      this.emitConnectionStatus()
+    }
+
+    // Don't connect if already connecting or connected to a different device
     if (this.connectionState !== 'disconnected') {
       console.log(`[BLEHaloProcessor] Already ${this.connectionState}, skipping...`)
       return
@@ -189,6 +207,7 @@ class BLEHaloProcessor extends EventEmitter {
 
       console.log('[BLEHaloProcessor] Connected to Halo')
       this.connectedPeripheral = peripheral
+      this.connectedMacAddress = macAddress.toUpperCase()
       this.connectionState = 'connected'
       this.reconnectAttempts = 0
 
@@ -440,6 +459,7 @@ class BLEHaloProcessor extends EventEmitter {
   handleDisconnect() {
     this.connectionState = 'disconnected'
     this.connectedPeripheral = null
+    this.connectedMacAddress = null
     this.characteristics.clear()
 
     if (this.pollInterval) {

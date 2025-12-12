@@ -19,7 +19,7 @@ kill-betti.bat                # Stop all Node.js processes
 ```bash
 npm run install:all          # Install all dependencies (root + workspaces)
 npm run dev                   # Run frontend + backend + video server concurrently
-npm run dev:frontend          # Frontend only (http://localhost:5173)
+npm run dev:frontend          # Frontend only (https://localhost:5173)
 npm run dev:backend           # Backend only (http://localhost:3001)
 npm run dev:video             # Video chat server only (port 8080)
 ```
